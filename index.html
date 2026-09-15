@@ -73,6 +73,7 @@
     .btn:hover { border-color: var(--teal); color: var(--teal); transform: translateY(-1px); }
     .btn-primary { border-color: var(--teal); background: var(--teal); color: white; }
     .btn-primary:hover { background: #0f7c69; color: white; }
+    .btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
     #lineEditBtn[aria-pressed="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); font-weight: 700; }
     .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
     .btn-small { padding: 6px 9px; font-size: 12px; }
@@ -535,6 +536,7 @@
       let selectedStatValue = null;
       let draggedRankValue = null;
       let draggedRankGroup = null;
+      let personEditBaseline = null;
       let leaderDragSnap = null;
       let photoTargetId = null;
       let inspectorHideTimer = null;
@@ -567,6 +569,18 @@
         }
         return null;
       };
+      const personEditState = found => found ? {
+        id: found.person.id,
+        name: found.person.name || "",
+        title: found.person.title || "",
+        role: found.person.role || "",
+        position: found.person.position || "",
+        joined: found.person.joined || "",
+        note: found.person.note || "",
+        photo: found.person.photo || "",
+        departmentId: found.department?.id || ""
+      } : null;
+      const personEditChanged = found => Boolean(personEditBaseline && JSON.stringify(personEditState(found)) !== JSON.stringify(personEditBaseline));
       const getDepartment = (id) => data.departments.find(item => item.id === id);
       const getOpening = id => {
         for (const department of data.departments) {
@@ -1246,6 +1260,7 @@
         const selectedDepartment = selectedDepartmentId ? getDepartment(selectedDepartmentId) : null;
         const found = selectedId ? getPerson(selectedId) : null;
         const openingFound = selectedOpeningId ? getOpening(selectedOpeningId) : null;
+        if (!found) personEditBaseline = null;
         const inspectorOpen = Boolean(selectedDepartment || found || openingFound);
         window.clearTimeout(inspectorHideTimer);
         if (!inspectorOpen) {
@@ -1271,8 +1286,10 @@
           return;
         }
         const person = found.person;
+        if (!personEditBaseline || personEditBaseline.id !== person.id) personEditBaseline = personEditState(found);
+        const editChanged = personEditChanged(found);
         const options = data.departments.map(department => `<option value="${esc(department.id)}" ${found.department && found.department.id === department.id ? "selected" : ""}>${esc(departmentLabel(department.id))}</option>`).join("");
-        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row"><div class="field"><label for="titleField">직위</label><input id="titleField" type="text" value="${esc(person.title)}" placeholder="예: 과장"></div><div class="field"><label for="roleField">직책</label><input id="roleField" type="text" value="${esc(person.role || "")}" placeholder="예: 파트장"></div></div><div class="field"><label for="positionField">담당 업무</label><input id="positionField" type="text" value="${esc(person.position)}" placeholder="예: 생산관리"></div><div class="field"><label for="joinedField">입사일</label><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."></div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn">변경 저장</button><button class="btn" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
+        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row"><div class="field"><label for="titleField">직위</label><input id="titleField" type="text" value="${esc(person.title)}" placeholder="예: 과장"></div><div class="field"><label for="roleField">직책</label><input id="roleField" type="text" value="${esc(person.role || "")}" placeholder="예: 파트장"></div></div><div class="field"><label for="positionField">담당 업무</label><input id="positionField" type="text" value="${esc(person.position)}" placeholder="예: 생산관리"></div><div class="field"><label for="joinedField">입사일</label><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."></div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn"${editChanged ? "" : " disabled"}>변경 저장</button><button class="btn" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
         bindInspectorFields();
       }
       function bindDepartmentFields() {
@@ -1290,7 +1307,8 @@
       }
       function bindInspectorFields() {
         const fields = { nameField: "name", titleField: "title", roleField: "role", positionField: "position", joinedField: "joined", noteField: "note" };
-        Object.entries(fields).forEach(([id, key]) => { const input = $(`#${id}`); if (input) input.addEventListener("input", event => { const found = getPerson(selectedId); if (found) { found.person[key] = event.target.value; saveData(false); render(); } }); });
+        const updateApplyState = () => { const button = $("#applyBtn"); const found = getPerson(selectedId); if (button) button.disabled = !personEditChanged(found); };
+        Object.entries(fields).forEach(([id, key]) => { const input = $(`#${id}`); if (input) input.addEventListener("input", event => { const found = getPerson(selectedId); if (found) { found.person[key] = event.target.value; saveData(false); render(); updateApplyState(); } }); });
         const departmentField = $("#departmentField");
         if (departmentField) departmentField.addEventListener("change", event => movePerson(selectedId, event.target.value));
         $("#closeInspector").addEventListener("click", closeInspectorPanel);
@@ -1302,7 +1320,7 @@
           syncRankOrder();
           if (rank) data.hiddenRanks = data.hiddenRanks.filter(item => item !== rank);
           if (role) data.hiddenRanks = data.hiddenRanks.filter(item => item !== role);
-          saveData(); render();
+          saveData(); personEditBaseline = personEditState(getPerson(selectedId)); render(); renderInspector();
         });
         $("#deletePersonBtn").addEventListener("click", () => deletePerson(selectedId));
       }
@@ -1314,6 +1332,7 @@
         $("#deleteOpeningBtn").addEventListener("click", () => deleteOpening(selectedOpeningId));
       }
       function closeInspectorPanel() {
+        personEditBaseline = null;
         selectedId = null; selectedDepartmentId = null; selectedOpeningId = null;
         $$(".person-row.selected, .exec-card.selected, .to-row.selected", $("#orgCanvas")).forEach(node => node.classList.remove("selected"));
         renderInspector();
