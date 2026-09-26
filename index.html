@@ -12,7 +12,7 @@
       --line-strong: #b6c9c9;
       --surface: #ffffff;
       --surface-soft: #f5f8f7;
-      --canvas: #fbfcfb;
+      --canvas: #ffffff;
       --teal: #168a76;
       --teal-soft: #e6f4ef;
       --purple: #8668a9;
@@ -397,9 +397,11 @@
       .brand-mark img { width: auto; height: 33px; }
       .brand-copy strong { font-size: 19px; }
       .app-shell { width: 100% !important; height: 194mm !important; min-height: 0 !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; }
-      .workspace { display: none !important; }
-      .print-sheet { display: flex !important; align-items: center; justify-content: center; width: 100%; height: 176mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; page-break-after: avoid; }
-      .print-sheet img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+      .print-sheet { display: none !important; }
+      .workspace { display: block !important; width: 100% !important; height: 176mm !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; gap: 0 !important; overflow: hidden !important; break-inside: avoid; page-break-inside: avoid; page-break-after: avoid; }
+      .main-panel { display: block !important; width: 100% !important; height: 176mm !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: hidden !important; border: 0 !important; box-shadow: none !important; background: #fff !important; break-inside: avoid; page-break-inside: avoid; }
+      .canvas-wrap { position: relative !important; width: var(--print-w, 1062px) !important; height: var(--print-h, 665px) !important; max-width: 100% !important; flex: none !important; margin: 0 auto !important; padding: 0 !important; overflow: hidden !important; border: 0 !important; border-radius: 0 !important; background: #fff !important; break-inside: avoid; page-break-inside: avoid; }
+      .org-canvas { background: #fff !important; }
     }
     @media (max-width: 1080px) {
       .workspace, .workspace.inspector-open { grid-template-columns: 1fr; }
@@ -654,6 +656,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let groupDrag = null;
       let leaderMoveDrag = null;
       let leaderConnectionFrame = null;
+      let printViewportBackup = null;
       let suppressLeaderClickUntil = 0;
       let subgroupLineDrag = null;
       let activeSnapPoint = null;
@@ -931,9 +934,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const contentY = (py - viewport.y) / viewport.scale;
         viewport.x = px - contentX * next; viewport.y = py - contentY * next; viewport.scale = next; applyViewport();
       }
-      function fitView() {
-        const wrap = $(".canvas-wrap"); const canvas = $("#orgCanvas");
-        if (!wrap || !canvas) return;
+      function orgContentBounds(padding = 34) {
+        const canvas = $("#orgCanvas");
+        if (!canvas) return { minX: 0, minY: 0, width: 1, height: 1 };
         const previousTransform = canvas.style.transform; canvas.style.transform = "none";
         const canvasRect = canvas.getBoundingClientRect();
         const contentNodes = $$(".exec-card, .owner-departments, .free-owner-departments, .department", canvas).filter(node => node.getClientRects().length);
@@ -946,8 +949,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           maxY = Math.max(...rects.map(rect => rect.bottom - canvasRect.top));
         }
         canvas.style.transform = previousTransform;
-        const padding = 34; minX -= padding; minY -= padding; maxX += padding; maxY += padding;
-        const contentWidth = Math.max(1, maxX - minX); const contentHeight = Math.max(1, maxY - minY);
+        minX -= padding; minY -= padding; maxX += padding; maxY += padding;
+        return { minX, minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+      }
+      function fitView() {
+        const wrap = $(".canvas-wrap"); const canvas = $("#orgCanvas");
+        if (!wrap || !canvas) return;
+        const bounds = orgContentBounds();
+        const minX = bounds.minX; const minY = bounds.minY;
+        const contentWidth = bounds.width; const contentHeight = bounds.height;
         const scale = Math.min(1.4, (wrap.clientWidth - 18) / contentWidth, (wrap.clientHeight - 18) / contentHeight);
         viewport.scale = Math.max(.3, scale);
         viewport.x = (wrap.clientWidth - contentWidth * viewport.scale) / 2 - minX * viewport.scale;
@@ -1085,7 +1095,23 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return { x: from.cx + dx * distance, y: from.cy + dy * distance };
       }
       let personSnapTargets = [];
+      let departmentSnapTargets = [];
       let groupLineSnapTargets = [];
+      function buildDepartmentSnapTargets(canvas, canvasRect, scale) {
+        departmentSnapTargets = $$('.department[data-department-id]', canvas).filter(node => !node.closest(".is-tree-collapsed")).map(node => {
+          const rect = canvasRectFor(node, canvasRect, scale); const id = node.dataset.departmentId;
+          return [
+            { type: "department", departmentId: id, side: "top", point: { x: rect.cx, y: rect.top } },
+            { type: "department", departmentId: id, side: "right", point: { x: rect.right, y: rect.cy } },
+            { type: "department", departmentId: id, side: "bottom", point: { x: rect.cx, y: rect.bottom } },
+            { type: "department", departmentId: id, side: "left", point: { x: rect.left, y: rect.cy } }
+          ];
+        }).flat();
+      }
+      function resolveDepartmentSnap(spec) {
+        if (!spec || spec.type !== "department") return null;
+        return departmentSnapTargets.find(target => target.departmentId === spec.departmentId && target.side === spec.side)?.point || null;
+      }
       function buildPersonSnapTargets(canvas, canvasRect, scale) {
         personSnapTargets = $$('[data-executive-id], .person-row', canvas).filter(node => !node.closest(".is-tree-collapsed")).map(node => {
           const rect = canvasRectFor(node, canvasRect, scale); const id = node.dataset.executiveId || node.dataset.rowId;
@@ -1150,8 +1176,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const saved = data.lineRoutes[layout.key] || {};
         let start = { x: layout.autoStart.x + (Number(saved.startDx) || 0), y: layout.autoStart.y + (Number(saved.startDy) || 0) };
         let end = { x: layout.autoEnd.x + (Number(saved.endDx) || 0), y: layout.autoEnd.y + (Number(saved.endDy) || 0) };
-        const snappedStart = resolvePersonSnap(saved.startSnap) || resolveGroupLineSnap(saved.startSnap) || (saved.startSnap?.point ? saved.startSnap.point : null);
-        const snappedEnd = resolvePersonSnap(saved.endSnap) || resolveGroupLineSnap(saved.endSnap) || (saved.endSnap?.point ? saved.endSnap.point : null);
+        const snappedStart = resolvePersonSnap(saved.startSnap) || resolveDepartmentSnap(saved.startSnap) || resolveGroupLineSnap(saved.startSnap) || (saved.startSnap?.point ? saved.startSnap.point : null);
+        const snappedEnd = resolvePersonSnap(saved.endSnap) || resolveDepartmentSnap(saved.endSnap) || resolveGroupLineSnap(saved.endSnap) || (saved.endSnap?.point ? saved.endSnap.point : null);
         if (snappedStart) start = { x: Number(snappedStart.x), y: Number(snappedStart.y) };
         if (snappedEnd) end = { x: Number(snappedEnd.x), y: Number(snappedEnd.y) };
         let waypoints;
@@ -1198,6 +1224,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (axis === "x" && (target.side === "top" || target.side === "bottom")) candidates.push(target.point.x);
           if (axis === "y" && (target.side === "left" || target.side === "right")) candidates.push(target.point.y);
         });
+        departmentSnapTargets.forEach(target => {
+          if (axis === "x" && (target.side === "top" || target.side === "bottom")) candidates.push(target.point.x);
+          if (axis === "y" && (target.side === "left" || target.side === "right")) candidates.push(target.point.y);
+        });
         groupLineSnapTargets.forEach(target => candidates.push(axis === "x" ? target.center.x : target.center.y));
         connectionLayouts.forEach((layout, key) => {
           if (key === excludeKey) return;
@@ -1216,9 +1246,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         let best = null;
         const scale = viewport.scale || 1;
         const personThreshold = Math.max(34, 46 / scale);
+        const boxThreshold = Math.max(40, 54 / scale);
         personSnapTargets.filter(target => target.side === "top" || target.side === "bottom").forEach(target => {
           const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
           if (distance <= personThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "person", personId: target.personId, side: target.side } };
+        });
+        departmentSnapTargets.filter(target => target.side === "top" || target.side === "bottom").forEach(target => {
+          const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
+          if (distance <= boxThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "department", departmentId: target.departmentId, side: target.side } };
         });
         if (best) return best;
         connectionLayouts.forEach((layout, key) => {
@@ -1236,6 +1271,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         personSnapTargets.filter(target => target.side === "left" || target.side === "right").forEach(target => {
           const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
           if (distance <= personThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "person", personId: target.personId, side: target.side } };
+        });
+        departmentSnapTargets.filter(target => target.side === "left" || target.side === "right").forEach(target => {
+          const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
+          if (distance <= boxThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "department", departmentId: target.departmentId, side: target.side } };
         });
         if (best) return best;
         groupLineSnapTargets.forEach(target => {
@@ -1291,6 +1330,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!canvas || !svg) return;
         const canvasRect = canvas.getBoundingClientRect(); const scale = viewport.scale || 1;
         buildPersonSnapTargets(canvas, canvasRect, scale);
+        buildDepartmentSnapTargets(canvas, canvasRect, scale);
         buildGroupLineSnapTargets(canvas, canvasRect, scale);
         const cards = $$('[data-executive-id]', canvas); const layouts = [];
         const centerPeople = data.executives.filter(person => person.placement === "center");
@@ -1844,6 +1884,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const source = data.executives.find(item => item.id === sourceId); const tree = $("#executiveTree");
         if (!source || !tree) return;
         const cardNode = $(`[data-executive-id="${CSS.escape(sourceId)}"]`, tree);
+        normalizeAttachedLeaderEndpoints(sourceId, cardNode);
         const frozen = captureDetachedLeaderConnectionPoints(sourceId, cardNode);
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
         const snap = leaderAlignmentAt(event, sourceId);
@@ -2002,7 +2043,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const source = $(".canvas-wrap");
         try {
           return await window.html2canvas(source, {
-            backgroundColor: "#fbfcfb", logging: false, useCORS: true, imageTimeout: 3000, scale: Math.min(2, window.devicePixelRatio || 1.5),
+            backgroundColor: "#ffffff", logging: false, useCORS: true, imageTimeout: 3000, scale: Math.min(2, window.devicePixelRatio || 1.5),
             width: source.clientWidth, height: source.clientHeight,
             onclone: documentClone => documentClone.querySelectorAll(".people-stats, .monthly-panel, .fullscreen-exit, .connection-handle, .connection-midpoint-handle, .connection-path, .connection-snap-indicator, .leader-align-guide, .group-move-handle").forEach(node => node.remove())
           });
@@ -2041,32 +2082,46 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       async function enterFullscreen() { setOrgOnlyMode(true); try { await document.documentElement.requestFullscreen?.(); } catch (error) { /* 브라우저가 전체화면 API를 제한해도 조직도 전용 화면은 유지합니다. */ } }
       async function exitFullscreen() { setOrgOnlyMode(false); try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (error) { /* CSS 화면 복귀는 완료됩니다. */ } }
-      async function printOrgChart() {
+      const PRINT_SHEET_MM = { width: 281, height: 176 };
+      const mmToPx = value => value * 96 / 25.4;
+      function applyPrintFit() {
+        const canvas = $("#orgCanvas"); if (!canvas) return;
+        const bounds = orgContentBounds();
+        const sheetWidth = mmToPx(PRINT_SHEET_MM.width); const sheetHeight = mmToPx(PRINT_SHEET_MM.height);
+        document.documentElement.style.setProperty("--print-w", `${sheetWidth}px`);
+        document.documentElement.style.setProperty("--print-h", `${sheetHeight}px`);
+        const scale = Math.max(.05, Math.min(1.4, sheetWidth / bounds.width, sheetHeight / bounds.height));
+        viewport.scale = scale;
+        viewport.x = (sheetWidth - bounds.width * scale) / 2 - bounds.minX * scale;
+        viewport.y = (sheetHeight - bounds.height * scale) / 2 - bounds.minY * scale;
+        applyViewport(); drawConnections();
+      }
+      function printOrgChart() {
         const button = $("#printBtn");
-        if (button.disabled) return;
-        button.disabled = true;
-        try {
-          toast("한 페이지 인쇄 화면을 준비하고 있습니다.");
-          const canvas = await captureOrgCanvas();
-          const snapshot = $("#printSnapshot");
-          snapshot.src = canvas.toDataURL("image/jpeg", .96);
-          if (typeof snapshot.decode === "function") await snapshot.decode();
-          else if (!snapshot.complete) await new Promise((resolve, reject) => { snapshot.onload = resolve; snapshot.onerror = reject; });
-          document.body.classList.add("print-preparing");
-          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (button?.disabled) return;
+        if (!printViewportBackup) printViewportBackup = { ...viewport };
+        const wrap = $(".canvas-wrap");
+        if (wrap) { wrap.style.width = `${mmToPx(PRINT_SHEET_MM.width)}px`; wrap.style.height = `${mmToPx(PRINT_SHEET_MM.height)}px`; wrap.style.flex = "none"; }
+        document.body.classList.add("print-preparing");
+        applyPrintFit();
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          applyPrintFit();
           window.print();
-        } catch (error) {
-          console.error("Print preparation failed", error);
-          finishPrint();
-          toast("인쇄 화면을 준비하지 못했습니다. JPG 또는 PDF 저장을 이용해 주세요.");
-        }
+          window.setTimeout(finishPrint, 700);
+        }));
       }
       function finishPrint() {
         document.body.classList.remove("print-preparing");
+        const wrap = $(".canvas-wrap");
+        if (wrap) { wrap.style.width = ""; wrap.style.height = ""; wrap.style.flex = ""; }
         const snapshot = $("#printSnapshot");
         if (snapshot) snapshot.removeAttribute("src");
         const button = $("#printBtn");
         if (button) button.disabled = false;
+        if (printViewportBackup) {
+          viewport.x = printViewportBackup.x; viewport.y = printViewportBackup.y; viewport.scale = printViewportBackup.scale;
+          printViewportBackup = null; applyViewport(); drawConnections();
+        }
       }
       function importJson(file) {
         const reader = new FileReader(); reader.onload = event => {
@@ -2641,6 +2696,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
         keys.add(`leader:${id}`); keys.add(`owner:${id}`);
         data.executives.filter(item => item.anchorId === id).forEach(item => keys.add(`leader:${item.id}`));
+        Object.entries(data.lineRoutes || {}).forEach(([key, route]) => {
+          if (route?.startSnap?.type === "person" && route.startSnap.personId === id) keys.add(key);
+          if (route?.endSnap?.type === "person" && route.endSnap.personId === id) keys.add(key);
+        });
         return [...keys].filter(key => connectionLayouts.has(key));
       }
       function pointToCardEdgeDistance(point, rect) {
@@ -2671,10 +2730,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const saved = data.lineRoutes[key] ||= {}; const route = connectionRoute(layout); const tolerance = Math.max(20, 24 / scale); const ownershipTolerance = 6;
           const startBelongs = pointToCardEdgeDistance(layout.autoStart, rect) <= ownershipTolerance;
           const endBelongs = pointToCardEdgeDistance(layout.autoEnd, rect) <= ownershipTolerance;
-          const startAttached = pointToCardEdgeDistance(route.points[0], rect) <= tolerance || (saved.startSnap?.type === "person" && saved.startSnap.personId === id);
-          const endAttached = pointToCardEdgeDistance(route.points[route.points.length - 1], rect) <= tolerance || (saved.endSnap?.type === "person" && saved.endSnap.personId === id);
-          if (startBelongs && startAttached) { delete saved.startSnap; delete saved.startDx; delete saved.startDy; }
-          if (endBelongs && endAttached) { delete saved.endSnap; delete saved.endDx; delete saved.endDy; }
+          const startPinnedToCard = saved.startSnap?.type === "person" && saved.startSnap.personId === id;
+          const endPinnedToCard = saved.endSnap?.type === "person" && saved.endSnap.personId === id;
+          const startAttached = startPinnedToCard || pointToCardEdgeDistance(route.points[0], rect) <= tolerance;
+          const endAttached = endPinnedToCard || pointToCardEdgeDistance(route.points[route.points.length - 1], rect) <= tolerance;
+          if (startPinnedToCard) { delete saved.startDx; delete saved.startDy; }
+          else if (startBelongs && startAttached) { delete saved.startSnap; delete saved.startDx; delete saved.startDy; }
+          if (endPinnedToCard) { delete saved.endDx; delete saved.endDy; }
+          else if (endBelongs && endAttached) { delete saved.endSnap; delete saved.endDx; delete saved.endDy; }
         });
         drawConnections();
       }
@@ -2696,11 +2759,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         frozen.forEach((points, key) => {
           const layout = connectionLayouts.get(key); if (!layout || points.length < 2) return;
           const saved = data.lineRoutes[key] ||= {};
-          const start = points[0]; const end = points[points.length - 1];
-          delete saved.startSnap; delete saved.endSnap; delete saved.bendOffset;
-          saved.startDx = start.x - layout.autoStart.x; saved.startDy = start.y - layout.autoStart.y;
-          saved.endDx = end.x - layout.autoEnd.x; saved.endDy = end.y - layout.autoEnd.y;
-          saved.waypoints = points.slice(1, -1).map(point => ({ ...point }));
+          const lastIndex = points.length - 1;
+          const waypoints = points.slice(1, -1).map(point => ({ ...point }));
+          delete saved.bendOffset;
+          const liveStart = resolvePersonSnap(saved.startSnap) || resolveDepartmentSnap(saved.startSnap) || resolveGroupLineSnap(saved.startSnap);
+          if (liveStart) {
+            if (waypoints.length) { const dx = Number(liveStart.x) - points[0].x; const dy = Number(liveStart.y) - points[0].y; waypoints[0].x += dx; waypoints[0].y += dy; }
+            delete saved.startDx; delete saved.startDy;
+          } else {
+            delete saved.startSnap;
+            saved.startDx = points[0].x - layout.autoStart.x; saved.startDy = points[0].y - layout.autoStart.y;
+          }
+          const liveEnd = resolvePersonSnap(saved.endSnap) || resolveDepartmentSnap(saved.endSnap) || resolveGroupLineSnap(saved.endSnap);
+          if (liveEnd) {
+            if (waypoints.length) { const dx = Number(liveEnd.x) - points[lastIndex].x; const dy = Number(liveEnd.y) - points[lastIndex].y; const tail = waypoints[waypoints.length - 1]; tail.x += dx; tail.y += dy; }
+            delete saved.endDx; delete saved.endDy;
+          } else {
+            delete saved.endSnap;
+            saved.endDx = points[lastIndex].x - layout.autoEnd.x; saved.endDy = points[lastIndex].y - layout.autoEnd.y;
+          }
+          saved.waypoints = waypoints;
         });
         drawConnections();
       }
