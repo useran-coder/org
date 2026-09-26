@@ -150,9 +150,10 @@
     .month-bar { min-width: 0; height: 160px; display: grid; grid-template-rows: 20px 1fr 20px; gap: 5px; align-items: end; color: var(--muted); font-size: 10px; text-align: center; }
     .month-bar strong { color: var(--ink); font-size: 11px; }
     .month-bar span { width: min(42px, 72%); min-height: 4px; justify-self: center; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--blue), var(--teal)); }
-    .canvas-wrap { position: relative; overflow: hidden; flex: 1; min-height: 0; margin: 12px -8px -4px; padding: 0; cursor: grab; border: 0; border-radius: 0; background: var(--canvas); touch-action: none; }
+    .canvas-wrap { position: relative; overflow: hidden; flex: 1; min-height: 0; margin: 12px -8px -4px; padding: 0; cursor: grab; border: 0; border-radius: 0; background: var(--canvas); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .canvas-wrap * { user-select: none !important; -webkit-user-select: none !important; }
     .canvas-wrap.is-panning { cursor: grabbing; }
-    .org-canvas { --readability: 1; width: 2800px; min-height: 1480px; padding: 28px 60px 70px; background: var(--canvas); transform-origin: 0 0; user-select: none; position: relative; text-rendering: geometricPrecision; -webkit-font-smoothing: antialiased; }
+    .org-canvas { --readability: 1; width: 2800px; min-height: 1480px; padding: 28px 60px 70px; background: var(--canvas); transform-origin: 0 0; user-select: none; -webkit-user-select: none; position: relative; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; backface-visibility: hidden; will-change: transform; }
     .top-tree { display: flex; flex-direction: column; align-items: center; padding-top: 6px; min-height: 420px; position: relative; width: 100%; z-index: 2; }
     .departments { position: relative; z-index: 2; }
     .owner-connection-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
@@ -216,7 +217,10 @@
     .leader-level { width: 2200px; min-height: 86px; display: grid; grid-template-columns: minmax(760px, 1fr) auto minmax(760px, 1fr); align-items: center; gap: 72px; }
     .leader-center { grid-column: 2; justify-self: center; z-index: 2; position: relative; transform: translate(var(--leader-x, 0px), var(--leader-y, 0px)); }
     .leader-move-handle { position: absolute; top: -11px; right: -11px; z-index: 12; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 1px solid #9db1b5; border-radius: 50%; background: #fff; color: #46666b; font-size: 12px; line-height: 1; cursor: move; opacity: .22; transition: opacity .16s, border-color .16s, color .16s, box-shadow .16s; }
+    .leader-move-handle { touch-action: none; user-select: none; -webkit-user-select: none; }
     .leader-center:hover > .leader-move-handle, .free-leader:hover > .leader-move-handle, .leader-move-handle:hover, .leader-move-handle:focus-visible, .leader-move-handle.is-moving { opacity: 1; border-color: var(--teal); color: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); }
+    .leader-center > .exec-card[data-leader-move-card], .free-leader > .exec-card[data-leader-move-card] { cursor: grab; touch-action: none; }
+    .leader-center.leader-box-moving > .exec-card, .free-leader.leader-box-moving > .exec-card { cursor: grabbing; box-shadow: 0 0 0 3px rgba(22, 138, 118, .25), 0 14px 30px rgba(31, 65, 66, .16); }
     .org-canvas.leader-drag-active .owner-connection-layer { z-index: 8; }
     .leader-side-slot { min-width: 760px; min-height: 72px; display: flex; flex-direction: column; justify-content: center; gap: 8px; position: relative; border-radius: 12px; }
     .leader-side-slot.left { grid-column: 1; align-items: flex-start; }
@@ -266,6 +270,7 @@
     .department.dept-child-over > .drop-hint { display: block; background: var(--orange); }
     .department.dept-dragging { opacity: .48; }
     .department-head { padding: 10px 11px 9px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border-bottom: 1px solid var(--line); }
+    .collapse-tool { color: var(--blue); font-weight: 900; }
     .department-title { display: grid; align-items: start; gap: 2px; min-width: 0; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
     .department-title:hover strong { color: var(--teal); }
     .department-title strong { font-size: calc(13px * var(--readability)); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -397,7 +402,7 @@
               <button class="btn file-menu-item" id="importBtn" type="button" role="menuitem">JSON 가져오기</button>
               <button class="btn file-menu-item" id="exportBtn" type="button" role="menuitem">JSON 내보내기</button>
               <button class="btn file-menu-item" id="downloadHtmlBtn" type="button" role="menuitem">HTML 다운로드</button>
-              <a class="btn file-menu-item" href="interactive-org-chart.zip" download role="menuitem">ZIP 다운로드</a>
+              <a class="btn file-menu-item" href="interactive-org-chart_2.zip" download role="menuitem">ZIP 다운로드</a>
             </div>
           </details>
           <button class="btn btn-primary" id="saveBtn" type="button">저장하기</button>
@@ -577,6 +582,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let connectionDrag = null;
       let groupDrag = null;
       let leaderMoveDrag = null;
+      let leaderConnectionFrame = null;
+      let suppressLeaderClickUntil = 0;
       let subgroupLineDrag = null;
       let activeSnapPoint = null;
       let selectedStatType = null;
@@ -658,6 +665,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!normalized.lineRoutes || typeof normalized.lineRoutes !== "object") normalized.lineRoutes = {};
         if (!normalized.centerOffsets || typeof normalized.centerOffsets !== "object") normalized.centerOffsets = {};
         if (!normalized.subgroupOffsets || typeof normalized.subgroupOffsets !== "object") normalized.subgroupOffsets = {};
+        if (!Array.isArray(normalized.collapsedDepartments)) normalized.collapsedDepartments = [];
+        const departmentParentIds = new Set(normalized.departments.map(department => department.parentId).filter(Boolean));
+        normalized.collapsedDepartments = normalized.collapsedDepartments.filter(departmentId => departmentParentIds.has(departmentId));
         if (normalized.subgroupBoxMoveVersion !== 1) {
           Object.entries(normalized.lineRoutes).filter(([key]) => key.startsWith("subgroup:")).forEach(([key, route]) => {
             const departmentId = key.slice("subgroup:".length); const current = normalized.subgroupOffsets[departmentId] || {};
@@ -781,7 +791,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const totalHeadcount = () => data.executives.length + data.departments.reduce((sum, department) => sum + department.people.length, 0);
       const monthKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       function snapshotPayload(stripPhotos = true) {
-        const snapshot = structuredClone({ meta: data.meta, executives: data.executives, departments: data.departments, lineRoutes: data.lineRoutes, centerOffsets: data.centerOffsets, groupOffsets: data.groupOffsets, subgroupOffsets: data.subgroupOffsets, subgroupBoxMoveVersion: data.subgroupBoxMoveVersion, rankOrder: data.rankOrder, rankGroups: data.rankGroups, hiddenRanks: data.hiddenRanks, subDepartmentLayoutVersion: data.subDepartmentLayoutVersion });
+        const snapshot = structuredClone({ meta: data.meta, executives: data.executives, departments: data.departments, lineRoutes: data.lineRoutes, centerOffsets: data.centerOffsets, groupOffsets: data.groupOffsets, subgroupOffsets: data.subgroupOffsets, collapsedDepartments: data.collapsedDepartments, subgroupBoxMoveVersion: data.subgroupBoxMoveVersion, rankOrder: data.rankOrder, rankGroups: data.rankGroups, hiddenRanks: data.hiddenRanks, subDepartmentLayoutVersion: data.subDepartmentLayoutVersion });
         if (stripPhotos) {
           snapshot.executives.forEach(person => { person.photo = ""; });
           snapshot.departments.forEach(department => department.people.forEach(person => { person.photo = ""; }));
@@ -809,9 +819,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const dpr = window.devicePixelRatio || 1;
         const crispX = Math.round(viewport.x * dpr) / dpr; const crispY = Math.round(viewport.y * dpr) / dpr;
         const crispScale = Math.round(viewport.scale * 1000) / 1000;
-        const readability = Math.min(2.2, Math.max(1, .9 / Math.max(crispScale, .01)));
-        canvas.style.setProperty("--readability", readability.toFixed(3));
-        canvas.style.transform = `translate(${crispX}px, ${crispY}px) scale(${crispScale})`;
+        canvas.style.setProperty("--readability", "1");
+        canvas.style.transform = `translate3d(${crispX}px, ${crispY}px, 0) scale(${crispScale})`;
         $("#zoomValue").textContent = `${Math.round(viewport.scale * 100)}%`;
       }
       function setZoom(nextScale, clientX = null, clientY = null) {
@@ -878,7 +887,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return tenureBucket(person) === selectedStatValue;
       }
       function personMarkup(person, options = {}) {
-        const { row = false, draggable = false, departmentId = "", executive = false } = options;
+        const { row = false, draggable = false, departmentId = "", executive = false, movable = false } = options;
         const active = selectedId === person.id ? " selected" : "";
         const query = searchTerm.trim().toLowerCase();
         const matchesSearch = !query || `${person.name} ${person.title} ${person.role || ""} ${person.position}`.toLowerCase().includes(query);
@@ -889,7 +898,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!row) {
           const execHeading = [person.name, person.title].map(value => String(value || "").trim()).filter(Boolean).join(" ") || "이름 미입력";
           const execSub = [person.role, person.position].map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "직책·담당업무 미입력";
-          return `<button type="button" class="person-card exec-card${active}${searchClass}${statClass}" data-person-id="${esc(person.id)}" data-executive-id="${esc(person.id)}" draggable="${executive}">${avatarMarkup(person, "executive")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(execHeading)}</span>${badges}</span><span class="person-role">${esc(execSub)}</span></span></button>`;
+          return `<button type="button" class="person-card exec-card${active}${searchClass}${statClass}" data-person-id="${esc(person.id)}" data-executive-id="${esc(person.id)}"${movable ? ` data-leader-move-card="${esc(person.id)}"` : ""} draggable="${executive && !movable}">${avatarMarkup(person, "executive")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(execHeading)}</span>${badges}</span><span class="person-role">${esc(execSub)}</span></span></button>`;
         }
         const roleText = `${person.title || "직위 미입력"}${person.position ? ` · ${person.position}` : ""}`;
         const tenure = tenureText(person.joined);
@@ -901,7 +910,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       function renderLeaderLevel(person) {
         const left = executiveStack(person.id, "left"); const right = executiveStack(person.id, "right");
         const offset = data.centerOffsets?.[person.id] || {}; const x = Number(offset.x) || 0; const y = Number(offset.y) || 0;
-        return `<div class="leader-level" data-leader-level="${esc(person.id)}"><div class="leader-side-slot left ${left ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="left">${left}</div><div class="leader-center" data-leader-center="${esc(person.id)}" style="--leader-x:${x}px;--leader-y:${y}px">${personMarkup(person, { executive: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="이 박스만 이동" title="드래그하면 이 박스만 이동합니다(연결선은 고정)">✥</button></div><div class="leader-side-slot right ${right ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="right">${right}</div></div>`;
+        return `<div class="leader-level" data-leader-level="${esc(person.id)}"><div class="leader-side-slot left ${left ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="left">${left}</div><div class="leader-center" data-leader-center="${esc(person.id)}" style="--leader-x:${x}px;--leader-y:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button></div><div class="leader-side-slot right ${right ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="right">${right}</div></div>`;
       }
       function renderLeaderConnector(childId) {
         const left = executiveStack(childId, "connector-left"); const right = executiveStack(childId, "connector-right");
@@ -1061,6 +1070,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       function magneticPoint(rawPoint, excludeKey) {
         let best = null;
+        const scale = viewport.scale || 1;
+        const personThreshold = Math.max(34, 46 / scale);
+        personSnapTargets.filter(target => target.side === "top" || target.side === "bottom").forEach(target => {
+          const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
+          if (distance <= personThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "person", personId: target.personId, side: target.side } };
+        });
+        if (best) return best;
         connectionLayouts.forEach((layout, key) => {
           if (key === excludeKey) return;
           const route = connectionRoute(layout);
@@ -1073,9 +1089,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
         });
         if (best) return best;
-        personSnapTargets.forEach(target => {
+        personSnapTargets.filter(target => target.side === "left" || target.side === "right").forEach(target => {
           const distance = Math.hypot(rawPoint.x - target.point.x, rawPoint.y - target.point.y);
-          if (distance <= 34 && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "person", personId: target.personId, side: target.side } };
+          if (distance <= personThreshold && (!best || distance < best.distance)) best = { point: target.point, distance, snap: { type: "person", personId: target.personId, side: target.side } };
         });
         if (best) return best;
         groupLineSnapTargets.forEach(target => {
@@ -1246,7 +1262,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const freeCards = freePeople.map((person, index) => {
           const x = Number.isFinite(person.freeX) ? person.freeX : 1800 + index * 260;
           const y = Number.isFinite(person.freeY) ? person.freeY : 180 + index * 120;
-          return `<div class="free-leader" data-free-leader="${esc(person.id)}" style="left:${x}px;top:${y}px">${personMarkup(person, { executive: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="이 박스만 이동" title="드래그하면 이 박스만 이동합니다(연결선은 고정)">✥</button>${renderFreeOwnerGroup(person)}</div>`;
+          return `<div class="free-leader" data-free-leader="${esc(person.id)}" style="left:${x}px;top:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button>${renderFreeOwnerGroup(person)}</div>`;
         }).join("");
         const maxFreeY = freePeople.reduce((max, person) => Math.max(max, Number(person.freeY) || 0), 0);
         const freeHasParts = freePeople.some(person => data.departments.some(department => !department.parentId && department.ownerId === person.id));
@@ -1259,10 +1275,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const openingCount = openingDetails.length;
         const openings = openingDetails.map((opening, index) => `<button class="to-row${selectedOpeningId === opening.id ? " selected" : ""}" type="button" data-opening-id="${esc(opening.id)}" data-opening-department="${esc(department.id)}" aria-label="${esc(department.name)} 채용 예정 TO ${index + 1} 정보"><span class="to-circle">TO</span><span class="to-copy"><strong>${esc(opening.title || "채용 예정")}</strong><span>${esc(opening.position || "직무 미정")}${opening.planned ? ` · ${esc(opening.planned)}` : ""}</span></span></button>`).join("");
         const children = childrenOf(department.id);
-        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택"><strong>${esc(department.name)}</strong><span>${department.people.length}명${openingCount ? ` · TO ${openingCount}` : ""}</span></button><div class="department-tools"><button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
+        const collapsed = data.collapsedDepartments.includes(department.id);
+        const collapseButton = children.length ? `<button class="icon-button collapse-tool" type="button" data-toggle-department="${esc(department.id)}" aria-expanded="${String(!collapsed)}" aria-label="${esc(department.name)} 하위 트리 ${collapsed ? "펼치기" : "접기"}" title="${collapsed ? "하위 트리 펼치기" : "하위 트리 접기"}">${collapsed ? "⌄" : "⌃"}</button>` : "";
+        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택"><strong>${esc(department.name)}</strong><span>${department.people.length}명${openingCount ? ` · TO ${openingCount}` : ""}</span></button><div class="department-tools">${collapseButton}<button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
         const subgroupOffset = data.subgroupOffsets?.[department.id] || {};
         const subgroupX = Number(subgroupOffset.x) || 0; const subgroupY = Number(subgroupOffset.y) || 0;
-        const childMarkup = children.length ? `<div class="sub-departments" data-subgroup-container="${esc(department.id)}" style="--subgroup-x:${subgroupX}px;--subgroup-y:${subgroupY}px">${children.length > 1 ? `<button class="subgroup-line-handle" type="button" data-subgroup-line-move="${esc(department.id)}" aria-label="${esc(department.name)} 하위 파트 묶음선 및 파트 이동" title="드래그하여 묶음선과 하위 파트를 함께 이동">✥</button>` : ""}${children.map(child => renderDepartment(child, level + 1)).join("")}</div>` : "";
+        const childMarkup = children.length && !collapsed ? `<div class="sub-departments" data-subgroup-container="${esc(department.id)}" style="--subgroup-x:${subgroupX}px;--subgroup-y:${subgroupY}px">${children.length > 1 ? `<button class="subgroup-line-handle" type="button" data-subgroup-line-move="${esc(department.id)}" aria-label="${esc(department.name)} 하위 파트 묶음선 및 파트 이동" title="드래그하여 묶음선과 하위 파트를 함께 이동">✥</button>` : ""}${children.map(child => renderDepartment(child, level + 1)).join("")}</div>` : "";
         return `<div class="department-branch" data-department-branch="${esc(department.id)}">${card}${childMarkup}</div>`;
       }
       function renderDepartments() {
@@ -1281,6 +1299,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const groupKey = ownerId || "unassigned"; const offset = groupOffset(groupKey);
           return `<section class="owner-group" data-owner-group="${esc(groupKey)}" style="--group-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="owner-group-head"><span class="owner-group-title">${esc(label)} 아래 파트</span></div><div class="owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(groupKey)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item)).join("")}</div></section>`;
         }).join("");
+      }
+      function toggleDepartmentTree(departmentId) {
+        const department = getDepartment(departmentId); if (!department) return;
+        const collapsed = new Set(data.collapsedDepartments || []);
+        const willExpand = collapsed.has(departmentId);
+        if (willExpand) collapsed.delete(departmentId); else collapsed.add(departmentId);
+        data.collapsedDepartments = [...collapsed]; saveData(false); render();
+        toast(`${department.name} 하위 트리를 ${willExpand ? "펼쳤습니다" : "접었습니다"}.`);
       }
       function renderCount() {
         const total = data.executives.length + data.departments.reduce((sum, department) => sum + department.people.length, 0);
@@ -1592,11 +1618,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         delete source.freeX; delete source.freeY;
         saveData(false); render(); renderInspector(); toast(connector ? `연결선 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.` : `${target.name}님의 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.`);
       }
-      function leaderAlignmentAt(event, sourceId) {
+      function leaderAlignmentForPoint(raw, sourceId) {
         const tree = $("#executiveTree"); if (!tree) return null;
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
-        const raw = { x: (event.clientX - treeRect.left) / scale, y: (event.clientY - treeRect.top) / scale };
-        const threshold = 22 / scale;
+        const threshold = 26 / scale;
         let bestX = null; let bestY = null;
         $$('[data-executive-id]', tree).forEach(node => {
           if (node.dataset.executiveId === sourceId) return;
@@ -1606,7 +1631,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: center.x, distance: dx, targetId: node.dataset.executiveId };
           if (dy <= threshold && (!bestY || dy < bestY.distance)) bestY = { value: center.y, distance: dy, targetId: node.dataset.executiveId };
         });
+        $$('.department[data-department-id]', $("#orgCanvas")).forEach(node => {
+          const rect = node.getBoundingClientRect();
+          const centerX = (rect.left + rect.width / 2 - treeRect.left) / scale; const dx = Math.abs(raw.x - centerX);
+          if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: centerX, distance: dx, targetId: node.dataset.departmentId, type: "department-line" };
+        });
         return { x: bestX ? bestX.value : raw.x, y: bestY ? bestY.value : raw.y, snapX: bestX, snapY: bestY };
+      }
+      function leaderAlignmentAt(event, sourceId) {
+        const tree = $("#executiveTree"); if (!tree) return null;
+        const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
+        return leaderAlignmentForPoint({ x: (event.clientX - treeRect.left) / scale, y: (event.clientY - treeRect.top) / scale }, sourceId);
       }
       function updateLeaderAlignmentGuides(snap) {
         const vertical = $("#leaderAlignGuideV"); const horizontal = $("#leaderAlignGuideH");
@@ -1621,10 +1656,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       function moveLeaderBoxTo(sourceId, event) {
         const source = data.executives.find(item => item.id === sourceId); const tree = $("#executiveTree");
         if (!source || !tree) return;
+        const cardNode = $(`[data-executive-id="${CSS.escape(sourceId)}"]`, tree);
+        const frozen = captureDetachedLeaderConnectionPoints(sourceId, cardNode);
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
         const snap = leaderAlignmentAt(event, sourceId);
         const target = { x: snap ? snap.x : (event.clientX - treeRect.left) / scale, y: snap ? snap.y : (event.clientY - treeRect.top) / scale };
-        const frozen = captureConnectionPoints(affectedLeaderConnectionKeys(sourceId));
         if (source.placement === "center") {
           const node = $(`[data-leader-center="${CSS.escape(sourceId)}"]`); if (!node) return;
           const rect = node.getBoundingClientRect();
@@ -1642,7 +1678,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const aligned = snap?.snapX || snap?.snapY;
         clearLeaderAlignmentGuides();
         pinConnectionPoints(frozen); saveData(false);
-        toast(aligned ? "중심선에 자석 정렬해 이 박스만 이동했습니다." : "이 박스만 이동했습니다. 다른 박스와 연결선은 그대로입니다.");
+        toast(aligned ? "중심선에 정렬하고 실제 접점에 붙은 선만 함께 이동했습니다." : "실제 접점에 붙은 연결선만 함께 이동했습니다.");
       }
       function setDepartmentOwner(departmentId, ownerId) {
         const department = getDepartment(departmentId); if (!department) return;
@@ -2309,6 +2345,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         data.executives.filter(item => item.anchorId === id).forEach(item => keys.add(`leader:${item.id}`));
         return [...keys].filter(key => connectionLayouts.has(key));
       }
+      function pointToCardEdgeDistance(point, rect) {
+        if (!point || !rect) return Infinity;
+        const outsideX = point.x < rect.left ? rect.left - point.x : (point.x > rect.right ? point.x - rect.right : 0);
+        const outsideY = point.y < rect.top ? rect.top - point.y : (point.y > rect.bottom ? point.y - rect.bottom : 0);
+        if (outsideX || outsideY) return Math.hypot(outsideX, outsideY);
+        return Math.min(Math.abs(point.x - rect.left), Math.abs(point.x - rect.right), Math.abs(point.y - rect.top), Math.abs(point.y - rect.bottom));
+      }
+      function connectionIsAttachedToLeader(key, id, cardNode) {
+        const layout = connectionLayouts.get(key); const canvas = $("#orgCanvas");
+        if (!layout || !canvas || !cardNode) return false;
+        const saved = data.lineRoutes?.[key] || {};
+        if (saved.startSnap?.type === "person" && saved.startSnap.personId === id) return true;
+        if (saved.endSnap?.type === "person" && saved.endSnap.personId === id) return true;
+        const scale = viewport.scale || 1; const canvasRect = canvas.getBoundingClientRect(); const rect = canvasRectFor(cardNode, canvasRect, scale);
+        const route = connectionRoute(layout); const tolerance = Math.max(16, 18 / scale); const ownershipTolerance = 5;
+        const startBelongs = pointToCardEdgeDistance(layout.autoStart, rect) <= ownershipTolerance;
+        const endBelongs = pointToCardEdgeDistance(layout.autoEnd, rect) <= ownershipTolerance;
+        return (startBelongs && pointToCardEdgeDistance(route.points[0], rect) <= tolerance)
+          || (endBelongs && pointToCardEdgeDistance(route.points[route.points.length - 1], rect) <= tolerance);
+      }
+      function captureDetachedLeaderConnectionPoints(id, cardNode) {
+        const detachedKeys = affectedLeaderConnectionKeys(id).filter(key => !connectionIsAttachedToLeader(key, id, cardNode));
+        return captureConnectionPoints(detachedKeys);
+      }
       function captureConnectionPoints(keys) {
         const frozen = new Map();
         keys.forEach(key => {
@@ -2331,27 +2391,40 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
         drawConnections();
       }
+      function scheduleLeaderConnections(frozen) {
+        if (leaderConnectionFrame !== null) return;
+        leaderConnectionFrame = requestAnimationFrame(() => {
+          leaderConnectionFrame = null;
+          if (leaderMoveDrag) pinConnectionPoints(frozen);
+        });
+      }
       $("#orgChartApp").addEventListener("pointerdown", event => {
         const leaderHandle = event.target.closest("[data-leader-move]");
-        if (leaderHandle && event.button === 0) {
-          event.preventDefault(); event.stopPropagation();
-          const id = leaderHandle.dataset.leaderMove; const person = data.executives.find(item => item.id === id);
-          const centerNode = leaderHandle.closest(".leader-center"); const freeNode = leaderHandle.closest(".free-leader");
+        const leaderCard = event.target.closest("[data-leader-move-card]");
+        const leaderTrigger = leaderHandle || leaderCard;
+        if (leaderTrigger && event.button === 0) {
+          if (leaderHandle) event.preventDefault();
+          event.stopPropagation();
+          const id = leaderHandle?.dataset.leaderMove || leaderCard?.dataset.leaderMoveCard; const person = data.executives.find(item => item.id === id);
+          const centerNode = leaderTrigger.closest(".leader-center"); const freeNode = leaderTrigger.closest(".free-leader");
           const node = centerNode || freeNode;
           if (!person || !node) return;
-          const offset = data.centerOffsets?.[id] || {};
+          const offset = data.centerOffsets?.[id] || {}; const cardNode = $(`[data-executive-id="${CSS.escape(id)}"]`, node);
           const rect = node.getBoundingClientRect();
+          const cardRect = cardNode?.getBoundingClientRect() || rect;
           const treeRect = $("#executiveTree").getBoundingClientRect(); const scale = viewport.scale || 1;
           leaderMoveDrag = {
-            id, pointerId: event.pointerId, scale, handle: leaderHandle, node,
+            id, pointerId: event.pointerId, scale, handle: leaderHandle, trigger: leaderTrigger, node, didMove: false,
             mode: centerNode ? "center" : "free",
             startX: event.clientX, startY: event.clientY,
+            startCenterX: (cardRect.left + cardRect.width / 2 - treeRect.left) / scale,
+            startCenterY: (cardRect.top + cardRect.height / 2 - treeRect.top) / scale,
             baseX: centerNode ? (Number(offset.x) || 0) : (Number.isFinite(person.freeX) ? person.freeX : (rect.left + rect.width / 2 - treeRect.left) / scale),
             baseY: centerNode ? (Number(offset.y) || 0) : (Number.isFinite(person.freeY) ? person.freeY : (rect.top + rect.height / 2 - treeRect.top) / scale),
-            frozen: captureConnectionPoints(affectedLeaderConnectionKeys(id))
+            frozen: captureDetachedLeaderConnectionPoints(id, cardNode)
           };
-          leaderHandle.classList.add("is-moving");
-          try { leaderHandle.setPointerCapture?.(event.pointerId); } catch (error) { /* 포인터 캡처가 불가능해도 창 단위 이동으로 계속합니다. */ }
+          leaderHandle?.classList.add("is-moving"); node.classList.add("leader-box-moving");
+          try { leaderTrigger.setPointerCapture?.(event.pointerId); } catch (error) { /* 포인터 캡처가 불가능해도 창 단위 이동으로 계속합니다. */ }
           return;
         }
         const subgroupHandle = event.target.closest("[data-subgroup-line-move]");
@@ -2376,11 +2449,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           event.preventDefault();
           const dx = (event.clientX - leaderMoveDrag.startX) / (leaderMoveDrag.scale || 1);
           const dy = (event.clientY - leaderMoveDrag.startY) / (leaderMoveDrag.scale || 1);
-          leaderMoveDrag.nextX = leaderMoveDrag.baseX + dx; leaderMoveDrag.nextY = leaderMoveDrag.baseY + dy;
+          if (!leaderMoveDrag.didMove && Math.hypot(dx, dy) < 2) return;
+          leaderMoveDrag.didMove = true;
+          const rawCenter = { x: leaderMoveDrag.startCenterX + dx, y: leaderMoveDrag.startCenterY + dy };
+          const snap = leaderAlignmentForPoint(rawCenter, leaderMoveDrag.id);
+          leaderMoveDrag.nextX = leaderMoveDrag.baseX + dx + (snap.x - rawCenter.x);
+          leaderMoveDrag.nextY = leaderMoveDrag.baseY + dy + (snap.y - rawCenter.y);
+          updateLeaderAlignmentGuides(snap);
           const node = leaderMoveDrag.node;
           if (leaderMoveDrag.mode === "center") {
             node.style.setProperty("--leader-x", `${leaderMoveDrag.nextX}px`); node.style.setProperty("--leader-y", `${leaderMoveDrag.nextY}px`);
           } else { node.style.left = `${leaderMoveDrag.nextX}px`; node.style.top = `${leaderMoveDrag.nextY}px`; }
+          scheduleLeaderConnections(leaderMoveDrag.frozen);
           return;
         }
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
@@ -2400,16 +2480,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
       const endGroupDrag = event => {
         if (leaderMoveDrag && leaderMoveDrag.pointerId === event.pointerId) {
-          const { id, mode, frozen, handle } = leaderMoveDrag;
-          const moved = Number.isFinite(leaderMoveDrag.nextX) && Number.isFinite(leaderMoveDrag.nextY);
+          const { id, mode, frozen, handle, node } = leaderMoveDrag;
+          const moved = leaderMoveDrag.didMove && Number.isFinite(leaderMoveDrag.nextX) && Number.isFinite(leaderMoveDrag.nextY);
           const x = moved ? leaderMoveDrag.nextX : leaderMoveDrag.baseX;
           const y = moved ? leaderMoveDrag.nextY : leaderMoveDrag.baseY;
-          leaderMoveDrag = null; handle?.classList.remove("is-moving");
+          leaderMoveDrag = null; handle?.classList.remove("is-moving"); node?.classList.remove("leader-box-moving");
+          if (leaderConnectionFrame !== null) { cancelAnimationFrame(leaderConnectionFrame); leaderConnectionFrame = null; }
+          clearLeaderAlignmentGuides();
           if (!moved) { drawConnections(); return; }
+          suppressLeaderClickUntil = Date.now() + 350;
           if (mode === "center") { data.centerOffsets ||= {}; data.centerOffsets[id] = { x, y }; }
           else { const person = data.executives.find(item => item.id === id); if (person) { person.freeX = x; person.freeY = y; } }
           pinConnectionPoints(frozen); saveData(false);
-          toast("이 박스만 이동했습니다. 연결선은 그대로 유지됩니다.");
+          toast("실제 접점에 붙은 연결선만 함께 이동했습니다.");
           return;
         }
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
@@ -2420,9 +2503,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       };
       window.addEventListener("pointerup", endGroupDrag); window.addEventListener("pointercancel", endGroupDrag);
       const canvasWrap = $(".canvas-wrap");
+      canvasWrap.addEventListener("selectstart", event => event.preventDefault());
       canvasWrap.addEventListener("wheel", event => { event.preventDefault(); setZoom(viewport.scale * (event.deltaY > 0 ? .9 : 1.1), event.clientX, event.clientY); }, { passive: false });
       canvasWrap.addEventListener("pointerdown", event => {
         if (event.button !== 0 || event.target.closest("button, input, select, textarea, .person-row, .department, .connection-path, .connection-segment, .connection-handle, .connection-midpoint-handle")) return;
+        event.preventDefault();
         panState = { id: event.pointerId, startX: event.clientX, startY: event.clientY, originX: viewport.x, originY: viewport.y };
         canvasWrap.setPointerCapture(event.pointerId); canvasWrap.classList.add("is-panning");
       });
@@ -2459,6 +2544,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         event.stopPropagation(); draggedRankValue = null; draggedRankGroup = null; $$(".rank-chip.dragging, .rank-chip.drag-over").forEach(chip => chip.classList.remove("dragging", "drag-over")); $$(".stat-chips.rank-drop-over").forEach(zone => zone.classList.remove("rank-drop-over"));
       });
       $("#orgChartApp").addEventListener("click", event => {
+        if (Date.now() < suppressLeaderClickUntil && event.target.closest("[data-leader-move-card]")) { event.preventDefault(); event.stopPropagation(); return; }
         const addRankButton = event.target.closest("[data-add-rank-group]"); if (addRankButton) return addRank(addRankButton.dataset.addRankGroup);
         const deleteRankButton = event.target.closest("[data-delete-rank]"); if (deleteRankButton) return deleteRank(deleteRankButton.dataset.deleteRank, deleteRankButton.dataset.deleteRankGroup);
         const statChip = event.target.closest("[data-stat-type]");
@@ -2467,6 +2553,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           selectedStatType = same ? null : statChip.dataset.statType; selectedStatValue = same ? null : statChip.dataset.statValue; updateRankButtonState(); render(); return;
         }
         const statPerson = event.target.closest("[data-stat-person]"); if (statPerson) return selectPerson(statPerson.dataset.statPerson);
+        const collapseButton = event.target.closest("[data-toggle-department]"); if (collapseButton) return toggleDepartmentTree(collapseButton.dataset.toggleDepartment);
         const addOpening = event.target.closest("[data-add-opening]"); if (addOpening) return changeDepartmentOpenings(addOpening.dataset.addOpening, 1);
         const opening = event.target.closest("[data-opening-id]"); if (opening) return selectOpening(opening.dataset.openingDepartment, opening.dataset.openingId);
         const personNode = event.target.closest("[data-person-id]"); if (personNode) return selectPerson(personNode.dataset.personId);
