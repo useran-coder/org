@@ -48,22 +48,41 @@
       justify-content: space-between;
       background: var(--surface);
       border-bottom: 0;
+      position: relative;
+      z-index: 50;
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand { min-width: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 12px; }
     .brand-mark { height: 46px; flex: 0 0 auto; display: flex; align-items: center; }
     .brand-mark img { width: auto; height: 46px; display: block; object-fit: contain; }
     .brand-copy { display: grid; gap: 2px; }
     .brand-copy strong { font-size: 18px; letter-spacing: -.045em; }
     .brand-copy span { color: var(--muted); font-size: 11px; }
-    .topbar-right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 18px; }
+    .title-tools { min-width: 0; display: flex; align-items: center; gap: 6px; margin-left: 8px; }
+    .title-tools .btn { height: 30px; box-sizing: border-box; padding: 5px 9px; border-radius: 8px; font-size: 11px; white-space: nowrap; }
+    .title-tools .search { min-width: 190px; width: 190px; }
+    .topbar-right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
     .top-actions { display: flex; gap: 8px; align-items: center; }
+    .quick-menu-bar { display: flex; align-items: center; gap: 7px; }
+    .command-menu { position: relative; }
+    .command-menu-trigger[aria-expanded="true"] { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); font-weight: 700; }
+    .command-menu-trigger.has-filter { border-color: var(--teal); color: var(--teal); font-weight: 700; }
+    .command-menu-trigger::after { content: "▾"; margin-left: 7px; font-size: 10px; color: var(--muted); transition: transform .16s ease; }
+    .command-menu-trigger[aria-expanded="true"]::after { transform: rotate(180deg); }
+    .command-menu-panel { position: absolute; z-index: 70; top: calc(100% + 10px); left: 0; display: flex; align-items: center; gap: 6px; width: max-content; max-width: min(920px, calc(100vw - 38px)); padding: 8px; overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, .98); box-shadow: 0 16px 36px rgba(31, 65, 66, .18); }
+    .command-menu.edit-menu .command-menu-panel { left: auto; right: 0; }
+    .command-menu-panel[hidden] { display: none; }
+    .command-menu-panel .btn { min-height: 30px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+    .command-menu-panel .line-style-controls { flex: 0 0 auto; }
+    .view-option.is-active { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); font-weight: 700; }
     .file-menu { position: relative; }
     .file-menu > summary { list-style: none; cursor: pointer; user-select: none; }
     .file-menu > summary::-webkit-details-marker { display: none; }
     .file-menu > summary::after { content: "▾"; margin-left: 7px; font-size: 10px; color: var(--muted); transition: transform .16s ease; }
     .file-menu[open] > summary { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); }
+    .file-menu > summary.has-filter { border-color: var(--teal); color: var(--teal); font-weight: 700; }
     .file-menu[open] > summary::after { transform: rotate(180deg); }
     .file-menu-popover { position: absolute; z-index: 60; top: calc(100% + 8px); right: 0; min-width: 176px; padding: 6px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, .98); box-shadow: 0 16px 36px rgba(31, 65, 66, .18); display: grid; gap: 2px; }
+    .quick-menu-bar .file-menu-popover { left: 0; right: auto; }
     .file-menu-item.btn { width: 100%; min-height: 32px; justify-content: flex-start; border-color: transparent; border-radius: 7px; padding: 7px 10px; background: transparent; font-size: 12px; white-space: nowrap; }
     .file-menu-item.btn:hover { border-color: transparent; background: var(--teal-soft); color: var(--teal); transform: none; }
     .btn {
@@ -83,6 +102,9 @@
     .btn-primary { border-color: var(--teal); background: var(--teal); color: white; }
     .btn-primary:hover { background: #0f7c69; color: white; }
     .btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+    #saveBtn:not(:disabled) { border-color: #e6a0a5; background: #f8dadd; color: #9f2630; box-shadow: 0 4px 12px rgba(174, 53, 63, .12); }
+    #saveBtn:not(:disabled):hover { border-color: #dc858d; background: #f4c9cd; color: #8f1923; }
+    #saveBtn:disabled { border-color: var(--line); background: #f2f4f3; color: #a0aaac; opacity: 1; }
     #lineEditBtn[aria-pressed="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); font-weight: 700; }
     .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
     .btn-small { padding: 6px 9px; font-size: 12px; }
@@ -145,11 +167,21 @@
     .bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: #edf2f1; }
     .bar-fill { display: block; height: 100%; min-width: 3px; border-radius: inherit; background: linear-gradient(90deg, var(--teal), var(--blue)); transition: width .25s ease; }
     .bar-count { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-    .history-controls { display: grid; grid-template-columns: minmax(160px, 280px) 1fr; align-items: end; gap: 12px; }
+    .history-controls { display: grid; grid-template-columns: minmax(260px, 390px) 1fr; align-items: end; gap: 12px; }
+    .history-select-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 7px; }
+    .history-select-actions .field { margin-bottom: 0; }
     .monthly-chart { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 10px; align-items: end; min-height: 190px; padding: 14px 10px 2px; }
-    .month-bar { min-width: 0; height: 160px; display: grid; grid-template-rows: 20px 1fr 20px; gap: 5px; align-items: end; color: var(--muted); font-size: 10px; text-align: center; }
+    .month-bar { min-width: 0; height: 160px; display: grid; grid-template-rows: 20px 1fr 20px; gap: 5px; align-items: end; color: var(--muted); font-size: 10px; text-align: center; position: relative; }
     .month-bar strong { color: var(--ink); font-size: 11px; }
     .month-bar span { width: min(42px, 72%); min-height: 4px; justify-self: center; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--blue), var(--teal)); }
+    .month-delete { position: absolute; top: -5px; right: 0; width: 20px; height: 20px; padding: 0; border: 1px solid #efc4c7; border-radius: 50%; background: #fff; color: #c51d27; font-size: 12px; line-height: 1; }
+    .month-delete:hover { background: #fff1f2; }
+    .save-history-dialog { width: min(430px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 70px rgba(31, 65, 66, .28); }
+    .save-history-dialog::backdrop { background: rgba(31, 51, 58, .32); backdrop-filter: blur(3px); }
+    .save-history-form { display: grid; gap: 15px; padding: 20px; }
+    .save-history-form h2 { font-size: 17px; }
+    .save-history-form .field { margin-bottom: 0; }
+    .save-history-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .canvas-wrap { position: relative; overflow: hidden; flex: 1; min-height: 0; margin: 12px -8px -4px; padding: 0; cursor: grab; border: 0; border-radius: 0; background: var(--canvas); touch-action: none; user-select: none; -webkit-user-select: none; }
     .canvas-wrap * { user-select: none !important; -webkit-user-select: none !important; }
     .canvas-wrap.is-panning { cursor: grabbing; }
@@ -173,8 +205,8 @@
     .org-canvas.line-editing .connection-segment { pointer-events: stroke; cursor: pointer; }
     .btn.line-edit-action:disabled { opacity: .42; cursor: not-allowed; transform: none; }
     .free-connection-layer { display: none; }
-    .free-leader { position: absolute; z-index: 4; width: max-content; min-width: 260px; transform: translate(-50%, -50%); }
-    .free-leader > .exec-card { position: relative; z-index: 3; width: 260px; min-width: 260px; }
+    .free-leader { position: absolute; z-index: 4; width: 280px; min-width: 280px; transform: translate(-50%, -50%); }
+    .free-leader > .exec-card { position: relative; z-index: 3; }
     .leader-align-guide { position: absolute; z-index: 3; display: none; pointer-events: none; background: rgba(31, 111, 235, .62); box-shadow: 0 0 0 1px rgba(255, 255, 255, .8); }
     .leader-align-guide.is-active { display: block; }
     .leader-align-guide.vertical { top: 0; bottom: 0; width: 1px; transform: translateX(-.5px); }
@@ -208,7 +240,8 @@
     .person-row.search-match .person-name, .exec-card.search-match .person-name { color: #a85300; }
     .person-row.stat-muted, .exec-card.stat-muted { opacity: .16; filter: grayscale(.65); }
     .person-row.stat-match, .exec-card.stat-match, .person-row.selected, .exec-card.selected { position: relative; z-index: 7; background: #ecf8f4; box-shadow: 0 0 0 3px rgba(22, 138, 118, .28), 0 9px 24px rgba(31, 65, 66, .12); }
-    .exec-card { padding: 8px 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; box-shadow: 0 8px 20px rgba(34, 70, 67, .06); }
+    .exec-card { box-sizing: border-box; flex: 0 0 280px; width: 280px; min-width: 280px; max-width: 280px; height: 78px; min-height: 78px; max-height: 78px; padding: 8px 13px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; box-shadow: 0 8px 20px rgba(34, 70, 67, .06); }
+    .exec-card .person-copy, .exec-card .person-heading { overflow: hidden; }
     .exec-card.drag-over { border-color: var(--purple); box-shadow: 0 0 0 4px var(--purple-soft); }
     .exec-card.part-owner-over { border-color: var(--orange); box-shadow: 0 0 0 5px var(--orange-soft); }
     .exec-card.business { padding: 10px 16px; border-color: #b8dbd2; }
@@ -269,13 +302,14 @@
     .department.leader-owner-over { border-color: var(--teal); box-shadow: 0 0 0 5px var(--teal-soft); transform: translateY(-2px); }
     .department.dept-child-over > .drop-hint { display: block; background: var(--orange); }
     .department.dept-dragging { opacity: .48; }
-    .department-head { padding: 10px 11px 9px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border-bottom: 1px solid var(--line); }
+    .department-head { padding: 9px 11px 8px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; border-bottom: 1px solid var(--line); }
     .collapse-tool { color: var(--blue); font-weight: 900; }
-    .department-title { display: grid; align-items: start; gap: 2px; min-width: 0; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+    .department-title { display: block; width: 100%; min-width: 0; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
     .department-title:hover strong { color: var(--teal); }
-    .department-title strong { font-size: calc(13px * var(--readability)); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .department-title span { display: block; color: var(--muted); font-size: calc(11px * var(--readability)); line-height: 1.2; }
-    .department-tools { display: flex; gap: 2px; }
+    .department-title strong { display: block; width: 100%; font-size: calc(var(--department-title-size, 13px) * var(--readability)); line-height: 1.25; letter-spacing: -.02em; overflow: visible; white-space: nowrap; text-overflow: clip; }
+    .department-meta-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .department-count { color: var(--muted); font-size: calc(11px * var(--readability)); line-height: 28px; white-space: nowrap; }
+    .department-tools { display: flex; flex: 0 0 auto; gap: 2px; }
     .icon-button { width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); font-size: 17px; line-height: 1; }
     .icon-button:hover { background: var(--surface-soft); color: var(--teal); }
     .icon-button.to-tool { width: 34px; font-size: 10px; font-weight: 800; color: #cf1b25; }
@@ -297,6 +331,10 @@
     .department-branch { min-width: 220px; width: max-content; display: flex; flex-direction: column; align-items: center; position: relative; }
     .department-branch > .department { width: 220px; }
     .sub-departments { margin: 0; padding: 42px 0 0; display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: 18px; width: max-content; border: 0; position: relative; transform: translate(var(--subgroup-x, 0px), var(--subgroup-y, 0px)); transform-origin: top center; }
+    .sub-departments.is-tree-collapsed { display: none; }
+    [data-tooltip] { position: relative; }
+    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; z-index: 80; right: 0; bottom: calc(100% + 7px); width: max-content; max-width: 190px; padding: 6px 8px; border-radius: 7px; background: #24383b; color: #fff; box-shadow: 0 8px 20px rgba(31, 65, 66, .2); font-size: 10px; font-weight: 600; line-height: 1.35; white-space: normal; opacity: 0; visibility: hidden; transform: translateY(3px); transition: opacity .14s ease, transform .14s ease, visibility .14s; pointer-events: none; }
+    [data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; visibility: visible; transform: translateY(0); }
     .sub-label { display: none; }
     .department.is-child { border-width: 1px; border-top-width: 3px; box-shadow: none; }
     .department.is-child .department-head { padding-top: 8px; }
@@ -346,20 +384,22 @@
     .org-only-mode .canvas-wrap { height: 100vh; margin: 0; }
     .fullscreen-exit { display: none; position: absolute; z-index: 40; top: 14px; right: 14px; box-shadow: 0 8px 24px rgba(31, 65, 66, .18); }
     .org-only-mode .fullscreen-exit { display: inline-flex; }
+    .print-sheet { display: none; }
     .print-preparing .workspace { grid-template-columns: minmax(0, 1fr); }
     .print-preparing .inspector, .print-preparing .toolbar, .print-preparing .footer-note { display: none !important; }
     @media (max-width: 760px) { .stats-charts { grid-template-columns: 1fr; } .history-controls { grid-template-columns: 1fr; } }
     @media print {
       @page { size: A4 landscape; margin: 8mm; }
-      body { overflow: hidden; background: #fff; }
-      .topbar { display: flex !important; min-height: 0; padding: 0 0 10px; border: 0; box-shadow: none; }
-      .topbar-right, .brand-copy span, .toolbar, .people-stats, .monthly-panel, .footer-note, .inspector, .fullscreen-exit, .leader-move-handle, .group-move-handle, .subgroup-line-handle { display: none !important; }
+      html, body { width: 281mm; height: 194mm; overflow: hidden !important; background: #fff; }
+      .topbar { display: flex !important; box-sizing: border-box; height: 16mm !important; min-height: 0; padding: 0 0 2mm; border: 0; box-shadow: none; }
+      .topbar-right, .title-tools, .brand-copy span, .toolbar, .people-stats, .monthly-panel, .footer-note, .inspector, .fullscreen-exit, .leader-move-handle, .group-move-handle, .subgroup-line-handle { display: none !important; }
       .brand-mark { width: 142px; height: 33px; }
+      .brand-mark img { width: auto; height: 33px; }
       .brand-copy strong { font-size: 19px; }
-      .app-shell, .workspace, .main-panel { height: auto !important; min-height: 0 !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; }
-      .workspace { display: block !important; }
-      .canvas-wrap { width: 100% !important; height: 176mm !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; background: #fff; }
-      .org-canvas { transform-origin: 0 0; }
+      .app-shell { width: 100% !important; height: 194mm !important; min-height: 0 !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; }
+      .workspace { display: none !important; }
+      .print-sheet { display: flex !important; align-items: center; justify-content: center; width: 100%; height: 176mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; page-break-after: avoid; }
+      .print-sheet img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
     }
     @media (max-width: 1080px) {
       .workspace, .workspace.inspector-open { grid-template-columns: 1fr; }
@@ -387,60 +427,83 @@
       <div class="brand">
         <div class="brand-mark"><img src="data:image/jpeg;base64,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" alt="동방파스텍 CI"></div>
         <div class="brand-copy"><strong id="brandTitle">방화문 부자재부문 조직도</strong><span id="brandCrumb">조직도 / 방화문 부자재부문</span></div>
+        <div class="title-tools" aria-label="조직도 화면 조작">
+          <button class="btn" id="undoBtn" type="button" disabled aria-label="되돌리기 Ctrl+Z">↶ 되돌리기</button>
+          <button class="btn" id="redoBtn" type="button" disabled aria-label="다시 실행 Ctrl+Y">↷ 다시 실행</button>
+          <label class="search"><span class="search-icon" aria-hidden="true">⌕</span><span class="sr-only">구성원 검색</span><input id="searchInput" type="search" placeholder="이름 또는 직함 검색"></label>
+          <button class="btn" id="fullscreenBtn" type="button">전체화면</button>
+          <div class="zoom-controls" aria-label="화면 확대 축소">
+            <button class="btn" id="zoomOutBtn" type="button" aria-label="축소">−</button>
+            <span class="zoom-value" id="zoomValue">100%</span>
+            <button class="btn" id="zoomInBtn" type="button" aria-label="확대">＋</button>
+            <button class="btn" id="fitBtn" type="button">화면 맞춤</button>
+          </div>
+        </div>
       </div>
       <div class="topbar-right">
-        <div class="heading-meta"><span class="live-dot" aria-hidden="true"></span><span>실시간 편집</span><span id="memberCount">구성원 0명</span></div>
-        <div class="top-actions">
-          <button class="btn" id="toggleRankBtn" type="button" aria-expanded="false" aria-controls="peopleStats">직위/직책</button>
-          <button class="btn" id="monthlyBtn" type="button" aria-expanded="false" aria-controls="monthlyPanel">월별 인원</button>
+        <div class="quick-menu-bar" aria-label="조직도 파일, 추가, 수정 및 보기 메뉴">
           <details class="file-menu" id="fileMenu">
             <summary class="btn" id="fileMenuBtn">파일</summary>
             <div class="file-menu-popover" role="menu" aria-labelledby="fileMenuBtn">
+              <button class="btn file-menu-item" id="printBtn" type="button" role="menuitem">인쇄</button>
               <button class="btn file-menu-item" id="saveJpgBtn" type="button" role="menuitem">JPG 저장</button>
               <button class="btn file-menu-item" id="savePdfBtn" type="button" role="menuitem">PDF 저장</button>
               <button class="btn file-menu-item" id="excelImportBtn" type="button" role="menuitem">엑셀 가져오기</button>
               <button class="btn file-menu-item" id="importBtn" type="button" role="menuitem">JSON 가져오기</button>
               <button class="btn file-menu-item" id="exportBtn" type="button" role="menuitem">JSON 내보내기</button>
               <button class="btn file-menu-item" id="downloadHtmlBtn" type="button" role="menuitem">HTML 다운로드</button>
-              <a class="btn file-menu-item" href="interactive-org-chart_2.zip" download role="menuitem">ZIP 다운로드</a>
+              <a class="btn file-menu-item" href="interactive-org-chart_9.zip" download role="menuitem">ZIP 다운로드</a>
             </div>
           </details>
-          <button class="btn btn-primary" id="saveBtn" type="button">저장하기</button>
+          <div class="command-menu add-menu">
+            <button class="btn command-menu-trigger" id="addMenuBtn" type="button" aria-expanded="false" aria-controls="addMenuPanel">추가</button>
+            <div class="command-menu-panel" id="addMenuPanel" hidden>
+              <button class="btn" id="addPersonBtn" type="button">+ 구성원</button>
+              <button class="btn" id="addLeaderBtn" type="button">+ 상위 구성원</button>
+              <button class="btn" id="addBusinessBtn" type="button">+ 사업부</button>
+              <button class="btn" id="addDeptBtn" type="button">+ 파트</button>
+            </div>
+          </div>
+          <div class="command-menu edit-menu">
+            <button class="btn command-menu-trigger" id="editMenuBtn" type="button" aria-expanded="false" aria-controls="editMenuPanel">수정</button>
+            <div class="command-menu-panel" id="editMenuPanel" hidden>
+              <button class="btn" id="lineEditBtn" type="button" aria-pressed="false">연결선 편집</button>
+              <button class="btn line-edit-action" id="deletePointBtn" type="button" disabled>접점 삭제</button>
+              <button class="btn line-edit-action" id="deleteSegmentBtn" type="button" disabled>세그먼트 삭제</button>
+              <button class="btn line-edit-action" id="restoreSegmentBtn" type="button" disabled>삭제 세그먼트 복원</button>
+              <button class="btn line-edit-action" id="straightenLineBtn" type="button" title="조직도의 모든 연결선을 수직·수평으로 맞춥니다.">전체 직선 정렬</button>
+              <button class="btn" id="optimizeLayoutBtn" type="button" data-tooltip="수동 배치와 연결선 접점을 정리하고 조직도를 기본 수평·수직 구조로 재정렬">최적화 정렬</button>
+              <div class="line-style-controls" id="lineStyleControls" hidden aria-label="선택한 세그먼트 스타일">
+                <select id="lineWidthField" aria-label="선 두께"><option value="1">1px</option><option value="2" selected>2px</option><option value="3">3px</option><option value="4">4px</option><option value="6">6px</option></select>
+                <input id="lineColorField" type="color" value="#20333a" aria-label="선 색상">
+                <select id="lineDashField" aria-label="선 종류"><option value="solid">실선</option><option value="dashed">파선</option><option value="dotted">점선</option></select>
+              </div>
+            </div>
+          </div>
+          <details class="file-menu view-menu" id="viewMenu">
+            <summary class="btn" id="viewMenuBtn">보기</summary>
+            <div class="file-menu-popover" id="viewMenuPanel" role="menu" aria-labelledby="viewMenuBtn">
+              <button class="btn file-menu-item view-option is-active" type="button" role="menuitem" data-view-mode="all">전체보기</button>
+              <button class="btn file-menu-item view-option" type="button" role="menuitem" data-view-mode="headquarters">본부보기</button>
+              <button class="btn file-menu-item view-option" type="button" role="menuitem" data-view-mode="fire-door">방화문부자재본부</button>
+              <button class="btn file-menu-item view-option" type="button" role="menuitem" data-view-mode="pd">PD본부</button>
+              <button class="btn file-menu-item view-option" type="button" role="menuitem" data-view-mode="scm">SCM센터</button>
+              <button class="btn file-menu-item view-option" type="button" role="menuitem" data-view-mode="management">경영관리본부</button>
+            </div>
+          </details>
+        </div>
+        <div class="top-actions">
+          <button class="btn" id="toggleRankBtn" type="button" aria-expanded="false" aria-controls="peopleStats">직위/직책</button>
+          <button class="btn" id="monthlyBtn" type="button" aria-expanded="false" aria-controls="monthlyPanel">월별 인원</button>
+          <button class="btn btn-primary" id="saveBtn" type="button" disabled title="수정 내용이 있을 때 활성화됩니다">저장</button>
+          <div class="heading-meta"><span class="live-dot" aria-hidden="true"></span><span>실시간 편집</span><span id="memberCount">구성원 0명</span></div>
         </div>
       </div>
     </header>
+    <div class="print-sheet" id="printSheet" aria-hidden="true"><img id="printSnapshot" alt="전사 조직도 인쇄 화면"></div>
 
     <main class="workspace">
       <section class="main-panel" aria-label="조직도 보드">
-        <div class="toolbar">
-          <div class="toolbar-group">
-            <button class="btn" id="undoBtn" type="button" disabled aria-label="되돌리기 Ctrl+Z">↶ 되돌리기</button>
-            <button class="btn" id="redoBtn" type="button" disabled aria-label="다시 실행 Ctrl+Y">↷ 다시 실행</button>
-            <label class="search"><span class="search-icon" aria-hidden="true">⌕</span><span class="sr-only">구성원 검색</span><input id="searchInput" type="search" placeholder="이름 또는 직함 검색"></label>
-            <button class="btn" id="addPersonBtn" type="button">+ 구성원</button>
-            <button class="btn" id="addLeaderBtn" type="button">+ 상위 구성원</button>
-            <button class="btn" id="addBusinessBtn" type="button">+ 사업부</button>
-            <button class="btn" id="addDeptBtn" type="button">+ 파트</button>
-            <button class="btn" id="lineEditBtn" type="button" aria-pressed="false">연결선 편집</button>
-            <button class="btn line-edit-action" id="deletePointBtn" type="button" hidden disabled>접점 삭제</button>
-            <button class="btn line-edit-action" id="deleteSegmentBtn" type="button" hidden disabled>세그먼트 삭제</button>
-            <button class="btn line-edit-action" id="restoreSegmentBtn" type="button" hidden>삭제 세그먼트 복원</button>
-            <button class="btn line-edit-action" id="straightenLineBtn" type="button" hidden title="선택한 연결선을 수직·수평으로 맞춥니다. 선택이 없으면 전체 연결선을 정렬합니다.">직선 정렬</button>
-            <div class="line-style-controls" id="lineStyleControls" hidden aria-label="선택한 세그먼트 스타일">
-              <select id="lineWidthField" aria-label="선 두께"><option value="1">1px</option><option value="2" selected>2px</option><option value="3">3px</option><option value="4">4px</option><option value="6">6px</option></select>
-              <input id="lineColorField" type="color" value="#20333a" aria-label="선 색상">
-              <select id="lineDashField" aria-label="선 종류"><option value="solid">실선</option><option value="dashed">파선</option><option value="dotted">점선</option></select>
-            </div>
-            <button class="btn" id="printBtn" type="button">인쇄</button>
-            <button class="btn" id="fullscreenBtn" type="button">전체화면</button>
-            <div class="zoom-controls" aria-label="화면 확대 축소">
-              <button class="btn" id="zoomOutBtn" type="button" aria-label="축소">−</button>
-              <span class="zoom-value" id="zoomValue">100%</span>
-              <button class="btn" id="zoomInBtn" type="button" aria-label="확대">＋</button>
-              <button class="btn" id="fitBtn" type="button">화면 맞춤</button>
-            </div>
-          </div>
-        </div>
         <div class="canvas-wrap">
           <section class="people-stats" id="peopleStats" aria-label="직위와 직책별 인원 현황" hidden>
             <div class="stats-layer-head"><h2>직위/직책 및 근속 현황</h2><button class="btn btn-small" id="closeStatsBtn" type="button">닫기</button></div>
@@ -450,7 +513,7 @@
           </section>
           <section class="monthly-panel" id="monthlyPanel" aria-label="월별 인원 및 조직도 저장 이력" hidden>
             <div class="stats-layer-head"><h2>월별 인원 및 저장 히스토리</h2><button class="btn btn-small" id="closeMonthlyBtn" type="button">닫기</button></div>
-            <div class="history-controls"><div class="field"><label for="historySelect">저장된 조직도</label><select id="historySelect"><option value="">현재 조직도</option></select></div><p class="helper">저장하기 버튼을 누를 때 조직도 이력이 생성됩니다. 월 말에 실행하면 해당 월 최종 인원이 자동 기록됩니다.</p></div>
+            <div class="history-controls"><div class="history-select-actions"><div class="field"><label for="historySelect">저장된 조직도</label><select id="historySelect"><option value="">현재 조직도</option></select></div><button class="btn btn-danger btn-small" id="deleteHistoryBtn" type="button" disabled>선택 이력 삭제</button></div><p class="helper">저장 이름으로 조직도 이력이 생성됩니다. 월별 막대의 × 버튼으로 저장된 월별 인원도 삭제할 수 있습니다.</p></div>
             <section class="chart-panel"><h3>월별 최종 인원</h3><div class="monthly-chart" id="monthlyChart"></div></section>
           </section>
           <button class="btn fullscreen-exit" id="exitFullscreenBtn" type="button">전체화면 종료</button>
@@ -460,11 +523,18 @@
             <div class="departments" id="departmentsList" aria-label="파트 목록"></div>
           </div>
         </div>
-        <div class="footer-note"><span aria-hidden="true">↗</span><span>상위계층 박스는 ✥ 핸들(또는 빈 여백으로 드래그)로 그 박스만 이동하며 연결선은 고정됩니다. 상위계층 사이 연결선에 놓으면 중간 단계로 들어갑니다. 연결선 편집에서 선을 클릭하면 세그먼트를 선택·삭제·복원할 수 있습니다.</span></div>
+        <div class="footer-note"><span aria-hidden="true">↗</span><span>상위계층 카드는 카드 본체나 ✥ 핸들로 이동할 수 있으며, 카드에 붙어 있는 연결선 끝점은 함께 따라옵니다. 상위계층 사이 연결선에 놓으면 중간 단계로 들어갑니다. 연결선 편집에서 선을 클릭하면 세그먼트를 선택·삭제·복원할 수 있습니다.</span></div>
       </section>
 
       <aside class="inspector" id="inspector" aria-label="상세 편집 패널" hidden></aside>
     </main>
+    <dialog class="save-history-dialog" id="saveHistoryDialog" aria-labelledby="saveHistoryTitle">
+      <form class="save-history-form" id="saveHistoryForm">
+        <div><h2 id="saveHistoryTitle">조직도 저장</h2><p class="helper">저장 히스토리에서 구분할 이름을 확인하거나 수정해 주세요.</p></div>
+        <div class="field"><label for="saveHistoryName">저장 이름</label><input id="saveHistoryName" type="text" maxlength="80" autocomplete="off" required></div>
+        <div class="save-history-actions"><button class="btn" id="cancelHistorySaveBtn" type="button">취소</button><button class="btn btn-primary" id="confirmHistorySaveBtn" type="submit">저장 확인</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden>
     <input id="jsonInput" type="file" accept="application/json,.json" hidden>
@@ -513,6 +583,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   <script>
     (() => {
       const STORAGE_KEY = "orgcanvas-fire-door-parts-v2-excel";
+      const FILE_VERSION = 9;
       const COLORS = ["teal", "purple", "blue", "orange", "red"];
       const starter = {
         meta: { company: "(주)동방파스텍", division: "방화문 부자재부문", updated: "2026. 9. 12." },
@@ -599,7 +670,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let redoStack = [];
       let historyLock = false;
       let lastCommittedState = JSON.stringify(data);
-      let printViewportBackup = null;
+      let activeViewMode = "all";
+      let manualSaveBaseline = null;
 
       const $ = (selector, root = document) => root.querySelector(selector);
       const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -754,13 +826,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       function resetTransientSelection() {
         selectedId = null; selectedDepartmentId = null; selectedOpeningId = null; selectedConnectionKey = null; selectedConnectionPart = null; activeSnapPoint = null;
       }
+      function manualSaveFingerprint() { return JSON.stringify(snapshotPayload(false)); }
+      function updateSaveButtonState() {
+        const button = $("#saveBtn");
+        if (!button) return;
+        const hasChanges = manualSaveBaseline !== null && manualSaveFingerprint() !== manualSaveBaseline;
+        button.disabled = !hasChanges;
+        button.title = hasChanges ? "수정 내용을 저장합니다" : "수정 내용이 있을 때 활성화됩니다";
+        button.setAttribute("aria-label", hasChanges ? "수정 내용 저장" : "저장할 수정 내용 없음");
+      }
       function saveData(showMessage = true, recordUndo = true) {
         const serialized = JSON.stringify(data);
         if (recordUndo && !historyLock && lastCommittedState && serialized !== lastCommittedState) {
           undoStack.push(lastCommittedState); if (undoStack.length > 80) undoStack.shift(); redoStack = [];
         }
         try {
-          localStorage.setItem(STORAGE_KEY, serialized); lastCommittedState = serialized; updateUndoActions();
+          localStorage.setItem(STORAGE_KEY, serialized); lastCommittedState = serialized; updateUndoActions(); updateSaveButtonState();
           if (showMessage) toast("조직도가 저장되었습니다.");
           return true;
         } catch (error) {
@@ -769,7 +850,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             (entry.snapshot?.departments || []).forEach(department => (department.people || []).forEach(person => { person.photo = ""; }));
           });
           try {
-            const compact = JSON.stringify(data); localStorage.setItem(STORAGE_KEY, compact); lastCommittedState = compact; updateUndoActions();
+            const compact = JSON.stringify(data); localStorage.setItem(STORAGE_KEY, compact); lastCommittedState = compact; updateUndoActions(); updateSaveButtonState();
             toast("저장 공간 확보를 위해 이전 히스토리의 사진만 정리하고 저장했습니다."); return true;
           } catch (retryError) { toast("저장 공간이 부족합니다. 오래된 히스토리를 정리해 주세요."); return false; }
         }
@@ -802,12 +883,29 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const now = new Date(); const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         if (tomorrow.getMonth() !== now.getMonth()) data.monthlyHeadcount[monthKey(now)] = totalHeadcount();
       }
-      function saveHistorySnapshot() {
+      function defaultHistoryLabel() {
         const now = new Date(); const label = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        return `${String(data.meta?.division || "조직도").trim()} ${label}`;
+      }
+      function openHistorySaveDialog() {
+        const dialog = $("#saveHistoryDialog"); const input = $("#saveHistoryName");
+        input.value = defaultHistoryLabel();
+        if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+        requestAnimationFrame(() => { input.focus(); input.select(); });
+      }
+      function closeHistorySaveDialog() {
+        const dialog = $("#saveHistoryDialog");
+        if (typeof dialog.close === "function" && dialog.open) dialog.close(); else dialog.removeAttribute("open");
+      }
+      function saveHistorySnapshot(customLabel) {
+        const label = String(customLabel || "").trim();
+        if (!label) return false;
+        const now = new Date();
         data.monthlyHeadcount[monthKey(now)] = totalHeadcount();
         data.history.unshift({ id: uid("history"), label, savedAt: now.toISOString(), snapshot: snapshotPayload() });
         data.history = data.history.slice(0, 12); historyPreviewBackup = null;
-        if (saveData(false)) { renderMonthlyPanel(); toast("조직도를 저장하고 히스토리를 만들었습니다."); }
+        if (saveData(false)) { manualSaveBaseline = manualSaveFingerprint(); updateSaveButtonState(); renderMonthlyPanel(); toast(`'${label}' 이름으로 저장했습니다.`); return true; }
+        return false;
       }
       function toast(message) {
         const node = $("#toast"); node.textContent = message; node.classList.add("show");
@@ -904,23 +1002,69 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const tenure = tenureText(person.joined);
         return `<div class="person-row${active}${searchClass}${statClass}" data-row-id="${esc(person.id)}" draggable="${draggable}" data-department-id="${esc(departmentId)}"><button type="button" class="person-card" data-person-id="${esc(person.id)}">${avatarMarkup(person, "small")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(person.name)}</span>${badges}</span><span class="person-role">${esc(roleText)}</span><span class="person-date"><span>${person.joined ? `입사 ${esc(person.joined)}` : "입사일 미입력"}</span>${tenure ? `<span class="person-tenure">· ${esc(tenure)}</span>` : ""}</span></span></button><span class="drag-grip" aria-label="드래그하여 이동" title="드래그하여 이동">⠿</span></div>`;
       }
-      function executiveStack(anchorId, placement) {
-        return data.executives.filter(person => person.placement === placement && person.anchorId === anchorId).map(person => personMarkup(person, { executive: true })).join("");
+      function executiveStack(anchorId, placement, visibleExecutiveIds = null) {
+        return data.executives.filter(person => (!visibleExecutiveIds || visibleExecutiveIds.has(person.id)) && person.placement === placement && person.anchorId === anchorId).map(person => personMarkup(person, { executive: true })).join("");
       }
-      function renderLeaderLevel(person) {
-        const left = executiveStack(person.id, "left"); const right = executiveStack(person.id, "right");
+      function renderLeaderLevel(person, visibleExecutiveIds = null) {
+        const left = executiveStack(person.id, "left", visibleExecutiveIds); const right = executiveStack(person.id, "right", visibleExecutiveIds);
         const offset = data.centerOffsets?.[person.id] || {}; const x = Number(offset.x) || 0; const y = Number(offset.y) || 0;
         return `<div class="leader-level" data-leader-level="${esc(person.id)}"><div class="leader-side-slot left ${left ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="left">${left}</div><div class="leader-center" data-leader-center="${esc(person.id)}" style="--leader-x:${x}px;--leader-y:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button></div><div class="leader-side-slot right ${right ? "has-items" : ""}" data-leader-side-target="${esc(person.id)}" data-leader-side="right">${right}</div></div>`;
       }
-      function renderLeaderConnector(childId) {
-        const left = executiveStack(childId, "connector-left"); const right = executiveStack(childId, "connector-right");
+      function renderLeaderConnector(childId, visibleExecutiveIds = null) {
+        const left = executiveStack(childId, "connector-left", visibleExecutiveIds); const right = executiveStack(childId, "connector-right", visibleExecutiveIds);
         return `<div class="leader-connector" data-connector-child="${esc(childId)}"><div class="connector-side-slot left ${left ? "has-items" : ""}" data-connector-target="${esc(childId)}" data-connector-side="left">${left}</div><div class="connector-spine" data-connector-center="${esc(childId)}"></div><div class="connector-side-slot right ${right ? "has-items" : ""}" data-connector-target="${esc(childId)}" data-connector-side="right">${right}</div></div>`;
       }
-      function renderFreeOwnerGroup(person) {
-        const departments = data.departments.filter(department => !department.parentId && department.ownerId === person.id);
+      function normalizedUnitName(value) { return String(value || "").replace(/\s+/g, "").toLowerCase(); }
+      function departmentIdsForView(mode = activeViewMode) {
+        const allIds = new Set(data.departments.map(department => department.id));
+        if (mode === "all") return allIds;
+        const roots = data.departments.filter(department => !department.parentId);
+        if (mode === "headquarters") return new Set(roots.map(department => department.id));
+        const visible = new Set();
+        const childrenMap = new Map();
+        data.departments.forEach(department => {
+          if (!department.parentId) return;
+          if (!childrenMap.has(department.parentId)) childrenMap.set(department.parentId, []);
+          childrenMap.get(department.parentId).push(department);
+        });
+        const includeSubtree = department => {
+          if (!department || visible.has(department.id)) return;
+          visible.add(department.id);
+          (childrenMap.get(department.id) || []).forEach(includeSubtree);
+        };
+        const namedRoots = fragment => roots.filter(department => normalizedUnitName(department.name).includes(fragment));
+        if (mode === "scm") namedRoots("scm센터").forEach(includeSubtree);
+        if (mode === "management") namedRoots("경영관리본부").forEach(includeSubtree);
+        if (mode === "fire-door" || mode === "pd") {
+          const branchFragment = mode === "fire-door" ? "방화문부자재" : "pd커버";
+          const salesFragment = mode === "fire-door" ? "방화문부자재본부" : "pd본부";
+          namedRoots(salesFragment).forEach(includeSubtree);
+          namedRoots("생산본부").forEach(productionRoot => {
+            visible.add(productionRoot.id);
+            (childrenMap.get(productionRoot.id) || []).filter(child => normalizedUnitName(child.name).includes(branchFragment)).forEach(includeSubtree);
+          });
+        }
+        return visible.size ? visible : allIds;
+      }
+      function executiveIdsForView(visibleDepartmentIds) {
+        if (activeViewMode === "all" || activeViewMode === "headquarters") return new Set(data.executives.map(person => person.id));
+        const visible = new Set(data.departments.filter(department => visibleDepartmentIds.has(department.id) && !department.parentId).map(department => department.ownerId).filter(Boolean));
+        let changed = true;
+        while (changed) {
+          changed = false;
+          data.executives.forEach(person => {
+            if (visible.has(person.id) && person.anchorId && !visible.has(person.anchorId)) { visible.add(person.anchorId); changed = true; }
+          });
+        }
+        const firstCenter = data.executives.find(person => person.placement === "center");
+        if (firstCenter) visible.add(firstCenter.id);
+        return visible;
+      }
+      function renderFreeOwnerGroup(person, visibleDepartmentIds = departmentIdsForView()) {
+        const departments = data.departments.filter(department => visibleDepartmentIds.has(department.id) && !department.parentId && department.ownerId === person.id);
         if (!departments.length) return "";
         const offset = groupOffset(person.id);
-        return `<div class="free-owner-group" data-owner-group="${esc(person.id)}" style="--free-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="free-owner-head"><span class="owner-group-title">${esc(person.title || person.role || "상위자")} ${esc(person.name)} 아래 파트</span></div><div class="free-owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(person.id)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item)).join("")}</div></div>`;
+        return `<div class="free-owner-group" data-owner-group="${esc(person.id)}" style="--free-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="free-owner-head"><span class="owner-group-title">${esc(person.title || person.role || "상위자")} ${esc(person.name)} 아래 파트</span></div><div class="free-owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(person.id)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item, 0, visibleDepartmentIds)).join("")}</div></div>`;
       }
       function groupOffset(key) {
         const saved = data.groupOffsets?.[key] || {};
@@ -943,7 +1087,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let personSnapTargets = [];
       let groupLineSnapTargets = [];
       function buildPersonSnapTargets(canvas, canvasRect, scale) {
-        personSnapTargets = $$('[data-executive-id], .person-row', canvas).map(node => {
+        personSnapTargets = $$('[data-executive-id], .person-row', canvas).filter(node => !node.closest(".is-tree-collapsed")).map(node => {
           const rect = canvasRectFor(node, canvasRect, scale); const id = node.dataset.executiveId || node.dataset.rowId;
           return [
             { type: "person", personId: id, side: "top", point: { x: rect.cx, y: rect.top } },
@@ -1124,18 +1268,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       function updateLineEditActions() {
         const pointButton = $("#deletePointBtn"); const segmentButton = $("#deleteSegmentBtn"); const restoreButton = $("#restoreSegmentBtn");
-        pointButton.hidden = !lineEditMode; segmentButton.hidden = !lineEditMode;
         const hasDeletedSegments = Object.values(data.lineRoutes || {}).some(route => Array.isArray(route?.deletedSegments) && route.deletedSegments.length);
-        if (restoreButton) { restoreButton.hidden = !lineEditMode; restoreButton.disabled = !hasDeletedSegments; }
+        if (restoreButton) restoreButton.disabled = !hasDeletedSegments;
         const straightenButton = $("#straightenLineBtn");
-        if (straightenButton) { straightenButton.hidden = !lineEditMode; straightenButton.textContent = selectedConnectionKey ? "선택 선 직선 정렬" : "전체 직선 정렬"; }
+        if (straightenButton) straightenButton.textContent = "전체 직선 정렬";
         let canDeletePoint = false;
         if (selectedConnectionPart?.type === "point" && selectedConnectionKey) {
           const layout = connectionLayouts.get(selectedConnectionKey);
           if (layout) canDeletePoint = connectionRoute(layout).points.length > 1;
         }
-        pointButton.disabled = !canDeletePoint;
-        segmentButton.disabled = !(selectedConnectionPart?.type === "segment" && selectedConnectionKey);
+        pointButton.disabled = !lineEditMode || !canDeletePoint;
+        segmentButton.disabled = !lineEditMode || !(selectedConnectionPart?.type === "segment" && selectedConnectionKey);
         const controls = $("#lineStyleControls"); const editingSegment = lineEditMode && selectedConnectionPart?.type === "segment" && selectedConnectionKey;
         controls.hidden = !editingSegment;
         if (editingSegment) {
@@ -1194,8 +1337,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           }
           layouts.push(groupLineLayout);
         });
-        const departmentCards = $$('.department[data-department-id]', canvas);
+        const departmentCards = $$('.department[data-department-id]', canvas).filter(card => !card.closest(".is-tree-collapsed"));
         data.departments.filter(parentDepartment => childrenOf(parentDepartment.id).length).forEach(parentDepartment => {
+          if (data.collapsedDepartments.includes(parentDepartment.id)) return;
           const parent = departmentCards.find(card => card.dataset.departmentId === parentDepartment.id); if (!parent) return;
           const sourceRect = canvasRectFor(parent, canvasRect, scale);
           const childLayouts = childrenOf(parentDepartment.id).map(childDepartment => {
@@ -1255,36 +1399,42 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       function renderExecutives() {
         const node = $("#executiveTree");
-        let centers = data.executives.filter(person => person.placement === "center");
-        if (!centers.length && data.executives.length) { data.executives[0].placement = "center"; data.executives[0].anchorId = null; centers = [data.executives[0]]; }
-        const cards = centers.map((person, index) => `${renderLeaderLevel(person)}${index < centers.length - 1 ? renderLeaderConnector(centers[index + 1].id) : ""}`).join("");
-        const freePeople = data.executives.filter(person => person.placement === "free");
+        const visibleDepartmentIds = departmentIdsForView();
+        const visibleExecutiveIds = executiveIdsForView(visibleDepartmentIds);
+        let centers = data.executives.filter(person => visibleExecutiveIds.has(person.id) && person.placement === "center");
+        if (!centers.length && data.executives.length && activeViewMode === "all") { data.executives[0].placement = "center"; data.executives[0].anchorId = null; centers = [data.executives[0]]; }
+        const cards = centers.map((person, index) => `${renderLeaderLevel(person, visibleExecutiveIds)}${index < centers.length - 1 ? renderLeaderConnector(centers[index + 1].id, visibleExecutiveIds) : ""}`).join("");
+        const freePeople = data.executives.filter(person => visibleExecutiveIds.has(person.id) && person.placement === "free");
         const freeCards = freePeople.map((person, index) => {
           const x = Number.isFinite(person.freeX) ? person.freeX : 1800 + index * 260;
           const y = Number.isFinite(person.freeY) ? person.freeY : 180 + index * 120;
-          return `<div class="free-leader" data-free-leader="${esc(person.id)}" style="left:${x}px;top:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button>${renderFreeOwnerGroup(person)}</div>`;
+          return `<div class="free-leader" data-free-leader="${esc(person.id)}" style="left:${x}px;top:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button>${renderFreeOwnerGroup(person, visibleDepartmentIds)}</div>`;
         }).join("");
         const maxFreeY = freePeople.reduce((max, person) => Math.max(max, Number(person.freeY) || 0), 0);
         const freeHasParts = freePeople.some(person => data.departments.some(department => !department.parentId && department.ownerId === person.id));
         node.style.minHeight = `${Math.max(420, maxFreeY + (freeHasParts ? 420 : 150))}px`;
         node.innerHTML = `${cards}${freeCards}<div class="leader-align-guide vertical" id="leaderAlignGuideV" aria-hidden="true"></div><div class="leader-align-guide horizontal" id="leaderAlignGuideH" aria-hidden="true"></div>`;
       }
-      function renderDepartment(department, level = 0) {
+      function renderDepartment(department, level = 0, visibleDepartmentIds = null) {
         const people = department.people.map(person => personMarkup(person, { row: true, draggable: true, departmentId: department.id })).join("");
         const openingDetails = Array.isArray(department.openingDetails) ? department.openingDetails : [];
         const openingCount = openingDetails.length;
         const openings = openingDetails.map((opening, index) => `<button class="to-row${selectedOpeningId === opening.id ? " selected" : ""}" type="button" data-opening-id="${esc(opening.id)}" data-opening-department="${esc(department.id)}" aria-label="${esc(department.name)} 채용 예정 TO ${index + 1} 정보"><span class="to-circle">TO</span><span class="to-copy"><strong>${esc(opening.title || "채용 예정")}</strong><span>${esc(opening.position || "직무 미정")}${opening.planned ? ` · ${esc(opening.planned)}` : ""}</span></span></button>`).join("");
-        const children = childrenOf(department.id);
+        const children = childrenOf(department.id).filter(child => !visibleDepartmentIds || visibleDepartmentIds.has(child.id));
         const collapsed = data.collapsedDepartments.includes(department.id);
-        const collapseButton = children.length ? `<button class="icon-button collapse-tool" type="button" data-toggle-department="${esc(department.id)}" aria-expanded="${String(!collapsed)}" aria-label="${esc(department.name)} 하위 트리 ${collapsed ? "펼치기" : "접기"}" title="${collapsed ? "하위 트리 펼치기" : "하위 트리 접기"}">${collapsed ? "⌄" : "⌃"}</button>` : "";
-        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택"><strong>${esc(department.name)}</strong><span>${department.people.length}명${openingCount ? ` · TO ${openingCount}` : ""}</span></button><div class="department-tools">${collapseButton}<button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
+        const titleLength = [...String(department.name || "")].length;
+        const titleSize = titleLength > 18 ? 9.5 : titleLength > 15 ? 10.5 : titleLength > 12 ? 11.5 : titleLength > 10 ? 12 : 13;
+        const collapseButton = children.length ? `<button class="icon-button collapse-tool" type="button" data-toggle-department="${esc(department.id)}" data-tooltip="${collapsed ? "하위 파트 트리 펼치기" : "하위 파트 트리 접기"}" aria-expanded="${String(!collapsed)}" aria-label="${esc(department.name)} 하위 트리 ${collapsed ? "펼치기" : "접기"}">${collapsed ? "⌄" : "⌃"}</button>` : "";
+        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택" title="${esc(department.name)}"><strong style="--department-title-size:${titleSize}px">${esc(department.name)}</strong></button><div class="department-meta-row"><span class="department-count">${department.people.length}명${openingCount ? ` · TO ${openingCount}` : ""}</span><div class="department-tools">${collapseButton}<button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" data-tooltip="채용 예정 인원 추가" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" data-tooltip="하위 조직 추가" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" data-tooltip="구성원 추가" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
         const subgroupOffset = data.subgroupOffsets?.[department.id] || {};
         const subgroupX = Number(subgroupOffset.x) || 0; const subgroupY = Number(subgroupOffset.y) || 0;
-        const childMarkup = children.length && !collapsed ? `<div class="sub-departments" data-subgroup-container="${esc(department.id)}" style="--subgroup-x:${subgroupX}px;--subgroup-y:${subgroupY}px">${children.length > 1 ? `<button class="subgroup-line-handle" type="button" data-subgroup-line-move="${esc(department.id)}" aria-label="${esc(department.name)} 하위 파트 묶음선 및 파트 이동" title="드래그하여 묶음선과 하위 파트를 함께 이동">✥</button>` : ""}${children.map(child => renderDepartment(child, level + 1)).join("")}</div>` : "";
+        const childMarkup = children.length ? `<div class="sub-departments${collapsed ? " is-tree-collapsed" : ""}" data-subgroup-container="${esc(department.id)}" data-collapsed-tree="${String(collapsed)}" aria-hidden="${String(collapsed)}" style="--subgroup-x:${subgroupX}px;--subgroup-y:${subgroupY}px">${children.length > 1 ? `<button class="subgroup-line-handle" type="button" data-subgroup-line-move="${esc(department.id)}" aria-label="${esc(department.name)} 하위 파트 묶음선 및 파트 이동" title="드래그하여 묶음선과 하위 파트를 함께 이동">✥</button>` : ""}${children.map(child => renderDepartment(child, level + 1, visibleDepartmentIds)).join("")}</div>` : "";
         return `<div class="department-branch" data-department-branch="${esc(department.id)}">${card}${childMarkup}</div>`;
       }
       function renderDepartments() {
+        const visibleDepartmentIds = departmentIdsForView();
         const roots = data.departments.filter(item => {
+          if (!visibleDepartmentIds.has(item.id)) return false;
           if (item.parentId) return false;
           const owner = data.executives.find(person => person.id === item.ownerId);
           return !owner || owner.placement !== "free";
@@ -1297,15 +1447,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const departments = roots.filter(department => owner ? department.ownerId === owner.id : !data.executives.some(person => person.id === department.ownerId));
           const label = owner ? `${owner.title || "상위자"} ${owner.name}` : "담당 상위자 미지정";
           const groupKey = ownerId || "unassigned"; const offset = groupOffset(groupKey);
-          return `<section class="owner-group" data-owner-group="${esc(groupKey)}" style="--group-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="owner-group-head"><span class="owner-group-title">${esc(label)} 아래 파트</span></div><div class="owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(groupKey)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item)).join("")}</div></section>`;
+          return `<section class="owner-group" data-owner-group="${esc(groupKey)}" style="--group-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="owner-group-head"><span class="owner-group-title">${esc(label)} 아래 파트</span></div><div class="owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(groupKey)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item, 0, visibleDepartmentIds)).join("")}</div></section>`;
         }).join("");
       }
       function toggleDepartmentTree(departmentId) {
         const department = getDepartment(departmentId); if (!department) return;
+        const beforeCard = $(`.department[data-department-id="${CSS.escape(departmentId)}"]`);
+        const ownerGroup = beforeCard?.closest("[data-owner-group]"); const groupKey = ownerGroup?.dataset.ownerGroup || null;
+        const beforeRect = beforeCard?.getBoundingClientRect(); const scale = viewport.scale || 1;
+        const beforeCenter = beforeRect ? { x: beforeRect.left + beforeRect.width / 2, y: beforeRect.top + beforeRect.height / 2 } : null;
         const collapsed = new Set(data.collapsedDepartments || []);
         const willExpand = collapsed.has(departmentId);
         if (willExpand) collapsed.delete(departmentId); else collapsed.add(departmentId);
-        data.collapsedDepartments = [...collapsed]; saveData(false); render();
+        data.collapsedDepartments = [...collapsed]; render();
+        const afterCard = $(`.department[data-department-id="${CSS.escape(departmentId)}"]`); const afterRect = afterCard?.getBoundingClientRect();
+        if (groupKey && beforeCenter && afterRect) {
+          const current = groupOffset(groupKey);
+          const deltaX = (beforeCenter.x - (afterRect.left + afterRect.width / 2)) / scale;
+          const deltaY = (beforeCenter.y - (afterRect.top + afterRect.height / 2)) / scale;
+          updateGroupPosition(groupKey, { x: current.x + deltaX, y: current.y + deltaY });
+        }
+        saveData(false); drawConnections();
         toast(`${department.name} 하위 트리를 ${willExpand ? "펼쳤습니다" : "접었습니다"}.`);
       }
       function renderCount() {
@@ -1354,9 +1516,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       function renderMonthlyPanel(selectedHistoryId = "") {
         const select = $("#historySelect"); const chart = $("#monthlyChart"); if (!select || !chart) return;
         select.innerHTML = `<option value="">현재 조직도</option>${data.history.map(item => `<option value="${esc(item.id)}" ${item.id === selectedHistoryId ? "selected" : ""}>${esc(item.label)} · ${(item.snapshot?.executives || []).length + (item.snapshot?.departments || []).reduce((sum, department) => sum + (department.people || []).length, 0)}명</option>`).join("")}`;
-        const records = { ...data.monthlyHeadcount, [monthKey(new Date())]: totalHeadcount() };
+        const deleteHistoryButton = $("#deleteHistoryBtn");
+        if (deleteHistoryButton) deleteHistoryButton.disabled = !selectedHistoryId || !data.history.some(item => item.id === selectedHistoryId);
+        const currentMonth = monthKey(new Date()); const savedRecords = data.monthlyHeadcount || {};
+        const records = { ...savedRecords };
+        if (!Object.prototype.hasOwnProperty.call(records, currentMonth)) records[currentMonth] = totalHeadcount();
         const entries = Object.entries(records).sort(([a], [b]) => a.localeCompare(b)).slice(-12); const max = Math.max(1, ...entries.map(([, count]) => Number(count) || 0));
-        chart.innerHTML = entries.map(([month, count]) => `<div class="month-bar" aria-label="${esc(month)} ${count}명"><strong>${count}명</strong><span style="height:${Math.max(4, Number(count) / max * 100)}%"></span><small>${esc(month.replace("-", "."))}</small></div>`).join("") || `<span class="helper">저장된 월별 인원이 없습니다.</span>`;
+        chart.innerHTML = entries.map(([month, count]) => {
+          const saved = Object.prototype.hasOwnProperty.call(savedRecords, month);
+          return `<div class="month-bar" aria-label="${esc(month)} ${count}명">${saved ? `<button class="month-delete" type="button" data-delete-month="${esc(month)}" aria-label="${esc(month)} 월별 인원 삭제" title="월별 인원 삭제">×</button>` : ""}<strong>${count}명</strong><span style="height:${Math.max(4, Number(count) / max * 100)}%"></span><small>${esc(month.replace("-", "."))}${!saved && month === currentMonth ? " · 현재" : ""}</small></div>`;
+        }).join("") || `<span class="helper">저장된 월별 인원이 없습니다.</span>`;
       }
       function showHistorySnapshot(id) {
         const history = data.history; const monthlyHeadcount = data.monthlyHeadcount;
@@ -1370,6 +1539,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
         selectedId = null; selectedDepartmentId = null; selectedOpeningId = null; render(); renderInspector(); renderMonthlyPanel(id); requestAnimationFrame(fitView);
         toast(id ? "선택한 저장 시점의 조직도를 표시했습니다." : "현재 조직도로 돌아왔습니다.");
+      }
+      function deleteSelectedHistory() {
+        const id = $("#historySelect").value; const item = data.history.find(entry => entry.id === id);
+        if (!item) return toast("삭제할 저장 이력을 선택해 주세요.");
+        if (!window.confirm(`'${item.label}' 저장 이력을 삭제할까요?`)) return;
+        const history = data.history.filter(entry => entry.id !== id); const monthlyHeadcount = structuredClone(data.monthlyHeadcount || {});
+        if (historyPreviewBackup) {
+          data = normalizeData({ ...structuredClone(historyPreviewBackup), history, monthlyHeadcount });
+          historyPreviewBackup = null;
+        } else data.history = history;
+        saveData(false); resetTransientSelection(); render(); renderInspector(); renderMonthlyPanel(); requestAnimationFrame(fitView);
+        toast("선택한 저장 이력을 삭제했습니다.");
+      }
+      function deleteMonthlyRecord(month) {
+        if (!Object.prototype.hasOwnProperty.call(data.monthlyHeadcount || {}, month)) return;
+        if (!window.confirm(`${month.replace("-", ".")} 월별 인원 기록을 삭제할까요?`)) return;
+        delete data.monthlyHeadcount[month]; saveData(false); renderMonthlyPanel($("#historySelect").value);
+        toast("선택한 월별 인원 기록을 삭제했습니다.");
       }
       function syncRankOrder() { data.rankOrder = [...data.rankGroups.position, ...data.rankGroups.role]; }
       function addRank(group = "position") {
@@ -1805,7 +1992,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       function downloadHtml() {
         const html = `<!DOCTYPE html>\n${document.documentElement.outerHTML}`;
-        downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), "방화문-부자재부문-조직도.html");
+        downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), `interactive-org-chart_${FILE_VERSION}.html`);
         toast("조직도 HTML 파일 다운로드를 시작했습니다.");
       }
       async function captureOrgCanvas() {
@@ -1855,14 +2042,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       async function enterFullscreen() { setOrgOnlyMode(true); try { await document.documentElement.requestFullscreen?.(); } catch (error) { /* 브라우저가 전체화면 API를 제한해도 조직도 전용 화면은 유지합니다. */ } }
       async function exitFullscreen() { setOrgOnlyMode(false); try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (error) { /* CSS 화면 복귀는 완료됩니다. */ } }
       async function printOrgChart() {
-        printViewportBackup = { ...viewport }; document.body.classList.add("print-preparing");
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        fitView(); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        window.print();
+        const button = $("#printBtn");
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          toast("한 페이지 인쇄 화면을 준비하고 있습니다.");
+          const canvas = await captureOrgCanvas();
+          const snapshot = $("#printSnapshot");
+          snapshot.src = canvas.toDataURL("image/jpeg", .96);
+          if (typeof snapshot.decode === "function") await snapshot.decode();
+          else if (!snapshot.complete) await new Promise((resolve, reject) => { snapshot.onload = resolve; snapshot.onerror = reject; });
+          document.body.classList.add("print-preparing");
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          window.print();
+        } catch (error) {
+          console.error("Print preparation failed", error);
+          finishPrint();
+          toast("인쇄 화면을 준비하지 못했습니다. JPG 또는 PDF 저장을 이용해 주세요.");
+        }
       }
       function finishPrint() {
         document.body.classList.remove("print-preparing");
-        if (printViewportBackup) { viewport = { ...printViewportBackup }; printViewportBackup = null; applyViewport(); }
+        const snapshot = $("#printSnapshot");
+        if (snapshot) snapshot.removeAttribute("src");
+        const button = $("#printBtn");
+        if (button) button.disabled = false;
       }
       function importJson(file) {
         const reader = new FileReader(); reader.onload = event => {
@@ -2034,28 +2238,118 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           window.setTimeout(fitView, 80); toast(`엑셀 조직도를 적용했습니다. 구성원 ${count}명`);
         } catch (error) { console.error("Excel import failed", error); toast(error?.message || "엑셀 파일을 불러오지 못했습니다."); }
       }
+      function optimizeOrgLayout() {
+        const canvasCenterX = 1400;
+        const sideX = { left: 520, right: 2280 };
+        const sideCounts = { left: 0, right: 0 };
+        const freePeople = data.executives
+          .filter(person => person.placement === "free")
+          .sort((a, b) => (Number(a.freeY) || 0) - (Number(b.freeY) || 0) || (Number(a.freeX) || 0) - (Number(b.freeX) || 0));
+
+        freePeople.forEach((person, index) => {
+          const currentX = Number(person.freeX);
+          const side = Number.isFinite(currentX) && Math.abs(currentX - canvasCenterX) > 120
+            ? (currentX < canvasCenterX ? "left" : "right")
+            : (sideCounts.left <= sideCounts.right ? "left" : "right");
+          person.freeX = sideX[side];
+          person.freeY = 190 + sideCounts[side] * 620;
+          sideCounts[side] += 1;
+        });
+
+        data.centerOffsets = {};
+        data.groupOffsets = {};
+        data.subgroupOffsets = {};
+        data.lineRoutes = {};
+        selectedConnectionKey = null;
+        selectedConnectionPart = null;
+        activeSnapPoint = null;
+        connectionDrag = null;
+        render();
+        saveData(false);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          drawConnections();
+          fitView();
+        }));
+        toast("조직도를 최적화 정렬했습니다. Ctrl+Z로 이전 배치를 복원할 수 있습니다.");
+      }
       function render() {
         renderExecutives(); renderDepartments(); renderCount(); renderStats();
         if (!$("#monthlyPanel").hidden) renderMonthlyPanel($("#historySelect").value);
-        updateUndoActions(); updateRankButtonState();
+        updateUndoActions(); updateRankButtonState(); updateSaveButtonState();
         $("#orgCanvas").classList.toggle("line-editing", lineEditMode);
         requestAnimationFrame(() => { applyViewport(); drawConnections(); });
       }
+      const VIEW_LABELS = { all: "전체보기", headquarters: "본부보기", "fire-door": "방화문부자재본부", pd: "PD본부", scm: "SCM센터", management: "경영관리본부" };
+      function setViewMode(mode) {
+        if (!VIEW_LABELS[mode]) return;
+        activeViewMode = mode;
+        $$(".view-option").forEach(button => button.classList.toggle("is-active", button.dataset.viewMode === mode));
+        const viewButton = $("#viewMenuBtn");
+        viewButton.classList.toggle("has-filter", mode !== "all");
+        viewButton.textContent = mode === "all" ? "보기" : `보기 · ${VIEW_LABELS[mode]}`;
+        selectedDepartmentId = null;
+        selectedConnectionKey = null;
+        selectedConnectionPart = null;
+        render();
+        requestAnimationFrame(() => requestAnimationFrame(fitView));
+        toast(`${VIEW_LABELS[mode]}로 전환했습니다.`);
+      }
 
-      $("#saveBtn").addEventListener("click", saveHistorySnapshot);
+      $("#saveBtn").addEventListener("click", openHistorySaveDialog);
+      $("#cancelHistorySaveBtn").addEventListener("click", closeHistorySaveDialog);
+      $("#saveHistoryForm").addEventListener("submit", event => {
+        event.preventDefault(); const input = $("#saveHistoryName"); const label = input.value.trim();
+        if (!label) { toast("저장 이름을 입력해 주세요."); input.focus(); return; }
+        if (saveHistorySnapshot(label)) closeHistorySaveDialog();
+      });
       $("#exportBtn").addEventListener("click", exportJson);
       $("#downloadHtmlBtn").addEventListener("click", downloadHtml);
       $("#saveJpgBtn").addEventListener("click", saveJpg);
       $("#savePdfBtn").addEventListener("click", savePdf);
       const fileMenu = $("#fileMenu");
-      fileMenu.addEventListener("click", event => {
-        if (event.target.closest(".file-menu-item")) window.setTimeout(() => fileMenu.removeAttribute("open"), 0);
+      const viewMenu = $("#viewMenu");
+      const dropdownMenus = [fileMenu, viewMenu];
+      const commandMenus = [
+        { button: $("#addMenuBtn"), panel: $("#addMenuPanel") },
+        { button: $("#editMenuBtn"), panel: $("#editMenuPanel") }
+      ];
+      function closeCommandMenus(exceptPanel = null) {
+        commandMenus.forEach(({ button, panel }) => {
+          if (panel === exceptPanel) return;
+          panel.hidden = true;
+          button.setAttribute("aria-expanded", "false");
+        });
+      }
+      commandMenus.forEach(({ button, panel }) => {
+        button.addEventListener("click", () => {
+          const willOpen = panel.hidden;
+          closeCommandMenus(willOpen ? panel : null);
+          panel.hidden = !willOpen;
+          button.setAttribute("aria-expanded", String(willOpen));
+          if (willOpen) dropdownMenus.forEach(menu => menu.removeAttribute("open"));
+        });
       });
+      dropdownMenus.forEach(menu => {
+        menu.addEventListener("click", event => {
+          if (event.target.closest(".file-menu-item")) window.setTimeout(() => menu.removeAttribute("open"), 0);
+        });
+        menu.addEventListener("toggle", () => {
+          if (!menu.open) return;
+          dropdownMenus.forEach(other => { if (other !== menu) other.removeAttribute("open"); });
+          closeCommandMenus();
+        });
+      });
+      $$(".view-option").forEach(button => button.addEventListener("click", () => setViewMode(button.dataset.viewMode)));
       document.addEventListener("pointerdown", event => {
-        if (fileMenu.open && !event.target.closest("#fileMenu")) fileMenu.removeAttribute("open");
+        dropdownMenus.forEach(menu => { if (menu.open && !menu.contains(event.target)) menu.removeAttribute("open"); });
       });
       document.addEventListener("keydown", event => {
-        if (event.key === "Escape" && fileMenu.open) { fileMenu.removeAttribute("open"); $("#fileMenuBtn").focus(); }
+        if (event.key !== "Escape") return;
+        dropdownMenus.forEach(menu => {
+          if (!menu.open) return;
+          menu.removeAttribute("open");
+          $(menu === fileMenu ? "#fileMenuBtn" : "#viewMenuBtn").focus();
+        });
       });
       $("#printBtn").addEventListener("click", printOrgChart);
       window.addEventListener("afterprint", finishPrint);
@@ -2100,6 +2394,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       $("#addDeptBtn").addEventListener("click", () => addDepartment());
       $("#undoBtn").addEventListener("click", undoChange);
       $("#redoBtn").addEventListener("click", redoChange);
+      $("#optimizeLayoutBtn").addEventListener("click", optimizeOrgLayout);
       $("#zoomInBtn").addEventListener("click", () => setZoom(viewport.scale + .1));
       $("#zoomOutBtn").addEventListener("click", () => setZoom(viewport.scale - .1));
       $("#fitBtn").addEventListener("click", fitView);
@@ -2124,6 +2419,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
       $("#closeMonthlyBtn").addEventListener("click", () => { $("#monthlyPanel").hidden = true; $("#monthlyBtn").setAttribute("aria-expanded", "false"); });
       $("#historySelect").addEventListener("change", event => showHistorySnapshot(event.target.value));
+      $("#deleteHistoryBtn").addEventListener("click", deleteSelectedHistory);
+      $("#monthlyChart").addEventListener("click", event => {
+        const button = event.target.closest("[data-delete-month]"); if (button) deleteMonthlyRecord(button.dataset.deleteMonth);
+      });
       $("#lineEditBtn").addEventListener("click", event => {
         lineEditMode = !lineEditMode; selectedConnectionKey = null; selectedConnectionPart = null; connectionDrag = null; activeSnapPoint = null;
         const canvas = $("#orgCanvas"); canvas.classList.toggle("line-editing", lineEditMode);
@@ -2277,9 +2576,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return best;
       }
       function alignConnectionsStraight() {
-        const single = Boolean(selectedConnectionKey && connectionLayouts.has(selectedConnectionKey));
-        const keys = single ? [selectedConnectionKey] : [...connectionLayouts.keys()];
-        const axisTolerance = single ? Number.POSITIVE_INFINITY : 48; const guideTolerance = 14;
+        const keys = [...connectionLayouts.keys()];
+        const axisTolerance = 48; const guideTolerance = 14;
         const guides = collectAxisGuides();
         let changed = 0;
         keys.forEach(key => {
@@ -2303,9 +2601,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           saved.waypoints = points.slice(1, -1).map(point => ({ ...point }));
           changed += 1;
         });
-        if (!changed) return toast(single ? "이미 수직·수평으로 맞춰져 있습니다." : "모든 연결선이 이미 수직·수평입니다.");
+        if (!changed) return toast("모든 연결선이 이미 수직·수평입니다.");
         saveData(false); drawConnections();
-        toast(single ? "선택한 연결선을 수직·수평으로 맞췄습니다." : `연결선 ${changed}개를 수직·수평으로 맞췄습니다.`);
+        toast(`연결선 ${changed}개를 수직·수평으로 맞췄습니다.`);
       }
       $("#straightenLineBtn").addEventListener("click", alignConnectionsStraight);
       function applySelectedSegmentStyle() {
@@ -2365,6 +2663,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return (startBelongs && pointToCardEdgeDistance(route.points[0], rect) <= tolerance)
           || (endBelongs && pointToCardEdgeDistance(route.points[route.points.length - 1], rect) <= tolerance);
       }
+      function normalizeAttachedLeaderEndpoints(id, cardNode) {
+        const canvas = $("#orgCanvas"); if (!canvas || !cardNode) return;
+        const scale = viewport.scale || 1; const canvasRect = canvas.getBoundingClientRect(); const rect = canvasRectFor(cardNode, canvasRect, scale);
+        affectedLeaderConnectionKeys(id).forEach(key => {
+          const layout = connectionLayouts.get(key); if (!layout) return;
+          const saved = data.lineRoutes[key] ||= {}; const route = connectionRoute(layout); const tolerance = Math.max(20, 24 / scale); const ownershipTolerance = 6;
+          const startBelongs = pointToCardEdgeDistance(layout.autoStart, rect) <= ownershipTolerance;
+          const endBelongs = pointToCardEdgeDistance(layout.autoEnd, rect) <= ownershipTolerance;
+          const startAttached = pointToCardEdgeDistance(route.points[0], rect) <= tolerance || (saved.startSnap?.type === "person" && saved.startSnap.personId === id);
+          const endAttached = pointToCardEdgeDistance(route.points[route.points.length - 1], rect) <= tolerance || (saved.endSnap?.type === "person" && saved.endSnap.personId === id);
+          if (startBelongs && startAttached) { delete saved.startSnap; delete saved.startDx; delete saved.startDy; }
+          if (endBelongs && endAttached) { delete saved.endSnap; delete saved.endDx; delete saved.endDy; }
+        });
+        drawConnections();
+      }
       function captureDetachedLeaderConnectionPoints(id, cardNode) {
         const detachedKeys = affectedLeaderConnectionKeys(id).filter(key => !connectionIsAttachedToLeader(key, id, cardNode));
         return captureConnectionPoints(detachedKeys);
@@ -2413,6 +2726,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const rect = node.getBoundingClientRect();
           const cardRect = cardNode?.getBoundingClientRect() || rect;
           const treeRect = $("#executiveTree").getBoundingClientRect(); const scale = viewport.scale || 1;
+          normalizeAttachedLeaderEndpoints(id, cardNode);
           leaderMoveDrag = {
             id, pointerId: event.pointerId, scale, handle: leaderHandle, trigger: leaderTrigger, node, didMove: false,
             mode: centerNode ? "center" : "free",
@@ -2492,7 +2806,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (mode === "center") { data.centerOffsets ||= {}; data.centerOffsets[id] = { x, y }; }
           else { const person = data.executives.find(item => item.id === id); if (person) { person.freeX = x; person.freeY = y; } }
           pinConnectionPoints(frozen); saveData(false);
-          toast("실제 접점에 붙은 연결선만 함께 이동했습니다.");
+          toast("카드와 연결된 선을 함께 이동했습니다.");
           return;
         }
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
@@ -2688,6 +3002,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         else movePerson(draggedPersonId, department.dataset.departmentId);
       });
 
+      manualSaveBaseline = manualSaveFingerprint();
       recordMonthEnd(); saveData(false); render(); renderInspector(); renderMonthlyPanel(); requestAnimationFrame(fitView);
       window.setInterval(() => {
         const before = data.monthlyHeadcount[monthKey(new Date())]; recordMonthEnd();
