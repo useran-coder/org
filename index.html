@@ -609,6 +609,7 @@
               <div class="menu-row">
               <button class="btn line-edit-action" id="deletePointBtn" type="button" disabled>접점 삭제</button>
               <button class="btn line-edit-action" id="deleteSegmentBtn" type="button" disabled>세그먼트 삭제</button>
+              <button class="btn line-edit-action" id="mergeSegmentBtn" type="button" disabled title="접점으로 이어져 있지만 나뉘어 있는 세그먼트를 여러 개 선택하면 하나의 세그먼트로 합칩니다.">세그먼트 연결</button>
               <button class="btn line-edit-action" id="tidyPointBtn" type="button" disabled title="꺾이는 코너 접점만 남기고 일직선 위의 불필요한 접점을 정리합니다.">접점정리</button>
               <button class="btn line-edit-action" id="addPointBtn" type="button" disabled title="선택한 세그먼트에서 누른 지점에 접점을 추가합니다.">접점추가</button>
               <button class="btn line-edit-action" id="restoreSegmentBtn" type="button" disabled>삭제 세그먼트 복원</button>
@@ -1613,7 +1614,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         segmentButton.disabled = !lineEditMode || !connectionSelection.some(item => item.type === "segment");
         const editMenuButton = $("#editMenuBtn");
         if (editMenuButton) editMenuButton.classList.toggle("has-line-mode", Boolean(lineEditMode || lineDrawMode));
-        const tidyButton = $("#tidyPointBtn"); const addButton = $("#addPointBtn");
+        const tidyButton = $("#tidyPointBtn"); const addButton = $("#addPointBtn"); const mergeButton = $("#mergeSegmentBtn");
+        if (mergeButton) {
+          const perKey = new Map();
+          connectionSelection.filter(item => item.type === "segment").forEach(item => perKey.set(item.key, (perKey.get(item.key) || 0) + 1));
+          mergeButton.disabled = !lineEditMode || ![...perKey.values()].some(count => count >= 2);
+        }
         if (tidyButton) tidyButton.disabled = !lineEditMode;
         if (addButton) addButton.disabled = !lineEditMode || !connectionSelection.some(item => item.type === "segment");
         const controls = $("#lineStyleControls"); const editingLine = Boolean(lineEditMode && connectionSelection.length);
@@ -2332,10 +2338,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       function buildCenterHierarchy(centers) {
         const ids = new Set(centers.map(person => person.id));
         const parentOf = new Map();
-        centers.forEach((person, index) => {
+        const explicitOf = new Map();
+        centers.forEach(person => {
           const explicit = person.reportsTo && person.reportsTo !== person.id && ids.has(person.reportsTo) ? person.reportsTo : null;
-          parentOf.set(person.id, explicit || (index > 0 ? centers[index - 1].id : null));
+          explicitOf.set(person.id, explicit);
+          parentOf.set(person.id, explicit);
         });
+        const wouldLoop = (childId, parentId) => {
+          let cursor = parentId; const seen = new Set([childId]);
+          while (cursor) {
+            if (seen.has(cursor)) return true;
+            seen.add(cursor); cursor = parentOf.get(cursor) || null;
+          }
+          return false;
+        };
+        // 명시적으로 지정한 상위 담당자를 우선하고, 나머지는 바로 앞 계층을 상위로 잇습니다.
+        centers.forEach((person, index) => {
+          if (explicitOf.get(person.id)) return;
+          for (let i = index - 1; i >= 0; i -= 1) {
+            const candidate = centers[i].id;
+            if (candidate === person.id) continue;
+            if (!wouldLoop(person.id, candidate)) { parentOf.set(person.id, candidate); return; }
+          }
+          parentOf.set(person.id, null);
+        });
+        // 명시 지정끼리 순환이 생기면 뒤에 지정된 쪽을 해제합니다.
         centers.forEach(person => {
           const seen = new Set([person.id]); let cursor = parentOf.get(person.id);
           while (cursor) {
@@ -2433,10 +2460,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         moving.placement = "center"; moving.anchorId = null; moving.reportsTo = parentId || null;
         delete moving.freeX; delete moving.freeY;
         if (data.centerOffsets) delete data.centerOffsets[sourceId];
+        const parentIndex = parentId ? data.executives.findIndex(item => item.id === parentId) : -1;
         const siblings = data.executives.filter(item => item.placement === "center" && item.reportsTo === parentId);
-        const lastSibling = siblings.length ? siblings[siblings.length - 1].id : parentId;
-        const insertIndex = parentId ? data.executives.findIndex(item => item.id === lastSibling) : -1;
-        data.executives.splice(insertIndex >= 0 ? insertIndex + 1 : data.executives.length, 0, moving);
+        const lastSiblingIndex = siblings.length ? data.executives.findIndex(item => item.id === siblings[siblings.length - 1].id) : -1;
+        const insertIndex = Math.max(parentIndex, lastSiblingIndex);
+        data.executives.splice(insertIndex >= 0 ? insertIndex + 1 : (parentId ? data.executives.length : 0), 0, moving);
         Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:")).forEach(key => delete data.lineRoutes[key]);
         purgeLeaderRoutes(sourceId);
         return true;
@@ -2453,13 +2481,27 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           saveData(false); render(); renderInspector(); toast(`${moving.name}님을 최상위 계층으로 올렸습니다.`); return;
         }
         if (parentId === sourceId) return;
-        let cursor = parentId;
-        while (cursor) { if (cursor === sourceId) return toast("순환 연결은 만들 수 없습니다."); cursor = leaderParentId(data.executives.find(item => item.id === cursor)); }
+        // 새 상위 담당자가 현재 이 구성원 아래에 있으면, 그 연결을 먼저 풀어 순환을 없앱니다.
+        let guard = 0; let cursor = parentId; let released = null;
+        while (cursor && guard < 64) {
+          guard += 1;
+          const node = data.executives.find(item => item.id === cursor);
+          const nextId = leaderParentId(node);
+          if (nextId === sourceId || cursor === sourceId) {
+            const detach = cursor === sourceId ? null : node;
+            if (detach) {
+              detach.reportsTo = source.reportsTo && source.reportsTo !== detach.id ? source.reportsTo : null;
+              released = detach.name;
+            }
+            break;
+          }
+          cursor = nextId;
+        }
         const parent = data.executives.find(item => item.id === parentId); if (!parent) return;
         const hasConnectorChild = (source.placement === "connector-left" || source.placement === "connector-right") && Boolean(source.anchorId);
         if (!hasConnectorChild) {
           moveLeaderUnderParent(sourceId, parentId);
-          saveData(false); render(); renderInspector(); toast(`${source.name}님을 ${parent.name}님 바로 아래 계층으로 이동했습니다.`); return;
+          saveData(false); render(); renderInspector(); toast(`${source.name}님을 ${parent.name}님 바로 아래 계층으로 이동했습니다.${released ? ` (${released}님의 상위 연결은 해제했습니다)` : ""}`); return;
         }
         if (source.placement === "connector-left" || source.placement === "connector-right") {
           const centers = data.executives.filter(item => item.placement === "center");
@@ -3703,6 +3745,47 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         clearConnectionSelection(); saveData(false); drawConnections();
         toast(removedLines ? `그린 연결선 ${removedLines}개를 삭제했습니다.` : `선택한 세그먼트 ${removedSegments}개를 삭제했습니다. 선을 두 번 누르면 전체가 복원됩니다.`);
       }
+      function mergeSelectedSegments() {
+        const targets = connectionSelection.filter(item => item.type === "segment");
+        if (targets.length < 2) return toast("연결할 세그먼트를 2개 이상 선택하세요.");
+        const byKey = new Map();
+        targets.forEach(item => { if (!byKey.has(item.key)) byKey.set(item.key, new Set()); byKey.get(item.key).add(Number(item.index)); });
+        let mergedRuns = 0; let removedPoints = 0; let skipped = 0;
+        byKey.forEach((indexSet, key) => {
+          const layout = connectionLayouts.get(key); if (!layout) return;
+          const indexes = [...indexSet].sort((a, b) => a - b);
+          if (indexes.length < 2) { skipped += 1; return; }
+          const runs = [];
+          let run = [indexes[0]];
+          for (let i = 1; i < indexes.length; i += 1) {
+            if (indexes[i] === indexes[i - 1] + 1) run.push(indexes[i]);
+            else { runs.push(run); run = [indexes[i]]; }
+          }
+          runs.push(run);
+          const usable = runs.filter(item => item.length >= 2);
+          if (!usable.length) { skipped += 1; return; }
+          const route = connectionRoute(layout);
+          let points = route.points.map(point => ({ ...point }));
+          const deleted = new Set([...(route.deletedSegments || [])].map(Number));
+          let segDeleted = points.slice(0, -1).map((item, index) => deleted.has(index));
+          usable.sort((a, b) => b[0] - a[0]).forEach(item => {
+            const first = item[0]; const last = item[item.length - 1];
+            if (last + 1 > points.length - 1) return;
+            const state = item.every(index => segDeleted[index]);
+            points.splice(first + 1, last - first);
+            segDeleted.splice(first, item.length, state);
+            removedPoints += last - first; mergedRuns += 1;
+          });
+          if (!mergedRuns) return;
+          const saved = data.lineRoutes[key] ||= {};
+          saved.waypoints = points.slice(1, -1).map(point => ({ x: point.x, y: point.y }));
+          saved.deletedSegments = segDeleted.map((value, index) => (value ? index : -1)).filter(index => index >= 0);
+          delete saved.bendOffset;
+        });
+        if (!mergedRuns) return toast(skipped ? "서로 이어져 있는 세그먼트를 선택해야 합니다." : "연결할 세그먼트가 없습니다.");
+        clearConnectionSelection(); saveData(false); drawConnections();
+        toast(`세그먼트 ${mergedRuns}곳을 하나로 연결했습니다. (접점 ${removedPoints}개 제거)`);
+      }
       function tidyConnectionPoints() {
         const keys = connectionSelection.length
           ? [...new Set(connectionSelection.map(item => item.key))]
@@ -3789,6 +3872,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!restored) return toast("복원할 삭제 세그먼트가 없습니다.");
         saveData(false); drawConnections(); toast(`삭제한 세그먼트 ${restored}개를 복원했습니다.`);
       }
+      $("#mergeSegmentBtn")?.addEventListener("click", mergeSelectedSegments);
       $("#tidyPointBtn")?.addEventListener("click", tidyConnectionPoints);
       $("#addPointBtn")?.addEventListener("click", addPointToSelectedSegment);
       $("#deletePointBtn").addEventListener("click", deleteSelectedPoint);
