@@ -427,10 +427,12 @@
     .to-copy span { color: var(--muted); font-size: 9px; }
     .empty-drop { min-height: 72px; border: 1px dashed var(--line-strong); border-radius: 10px; display: grid; place-items: center; color: var(--muted); font-size: 11px; text-align: center; padding: 12px; }
     .empty-drop span { display: block; }
-    .department-branch { min-width: 220px; width: max-content; display: flex; flex-direction: column; align-items: center; position: relative; transform: translate(var(--branch-x, 0px), var(--branch-y, 0px)); }
+    .department-branch { min-width: 220px; width: max-content; z-index: 1; display: flex; flex-direction: column; align-items: center; position: relative; transform: translate(var(--branch-x, 0px), var(--branch-y, 0px)); }
     .department-move-handle { position: absolute; left: 50%; top: -13px; z-index: 12; width: 22px; height: 22px; padding: 0; transform: translateX(-50%); border: 1px solid #9db1b5; border-radius: 50%; background: #fff; color: #46666b; font-size: 11px; line-height: 1; cursor: move; opacity: 0; transition: opacity .16s, border-color .16s, color .16s, box-shadow .16s; }
     .department-branch:hover > .department-move-handle, .department-move-handle:focus-visible, .department-move-handle.is-moving { opacity: 1; border-color: var(--teal); color: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); }
     .department-branch.is-branch-moving { z-index: 14; }
+    .department-branch:hover { z-index: 3; }
+    .department-branch > .department { position: relative; z-index: 1; background: var(--surface); }
     .is-align-target { outline: 2px dashed rgba(22, 138, 118, .75); outline-offset: 2px; }
     .dept-align-guide { position: absolute; z-index: 5; display: none; pointer-events: none; background: rgba(22, 138, 118, .7); box-shadow: 0 0 0 1px rgba(255, 255, 255, .8); }
     .dept-align-guide.is-active { display: block; }
@@ -1818,12 +1820,47 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return `<section class="owner-group" data-owner-group="${esc(groupKey)}" style="--group-cols:${Math.max(1, departments.length)};--group-x:${offset.x}px;--group-y:${offset.y}px"><div class="owner-group-head"><span class="owner-group-title">${esc(label)} 아래 파트</span></div><div class="owner-departments"><button class="group-move-handle" type="button" data-group-move="${esc(groupKey)}" aria-label="파트 묶음 이동" title="드래그하여 파트 묶음 이동">✥</button>${departments.map(item => renderDepartment(item, 0, visibleDepartmentIds)).join("")}</div></section>`;
         }).join("");
       }
+      function captureBranchRects() {
+        const map = new Map();
+        $$("[data-department-branch]").forEach(node => {
+          const card = node.querySelector(":scope > .department"); if (!card) return;
+          const rect = card.getBoundingClientRect();
+          map.set(node.dataset.departmentBranch, { left: rect.left, top: rect.top });
+        });
+        return map;
+      }
+      function descendantDepartmentIds(departmentId) {
+        const ids = new Set();
+        const walk = parentId => childrenOf(parentId).forEach(child => { if (ids.has(child.id)) return; ids.add(child.id); walk(child.id); });
+        walk(departmentId);
+        return ids;
+      }
+      function freezeBranchPositions(beforeRects, skipIds, scale) {
+        if (!beforeRects || !beforeRects.size) return;
+        data.departmentOffsets ||= {};
+        $$("[data-department-branch]").forEach(node => {
+          const id = node.dataset.departmentBranch;
+          if (skipIds && skipIds.has(id)) return;
+          const previous = beforeRects.get(id); if (!previous) return;
+          const card = node.querySelector(":scope > .department"); if (!card) return;
+          const rect = card.getBoundingClientRect();
+          const dx = (previous.left - rect.left) / (scale || 1);
+          const dy = (previous.top - rect.top) / (scale || 1);
+          if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+          const current = data.departmentOffsets[id] || {};
+          const next = { x: (Number(current.x) || 0) + dx, y: (Number(current.y) || 0) + dy };
+          data.departmentOffsets[id] = next;
+          node.style.setProperty("--branch-x", `${next.x}px`);
+          node.style.setProperty("--branch-y", `${next.y}px`);
+        });
+      }
       function toggleDepartmentTree(departmentId) {
         const department = getDepartment(departmentId); if (!department) return;
         const beforeCard = $(`.department[data-department-id="${CSS.escape(departmentId)}"]`);
         const ownerGroup = beforeCard?.closest("[data-owner-group]"); const groupKey = ownerGroup?.dataset.ownerGroup || null;
         const beforeRect = beforeCard?.getBoundingClientRect(); const scale = viewport.scale || 1;
         const beforeCenter = beforeRect ? { x: beforeRect.left + beforeRect.width / 2, y: beforeRect.top + beforeRect.height / 2 } : null;
+        const beforeBranchRects = captureBranchRects();
         let willExpand = false;
         const visibleIds = departmentIdsForView();
         const realChildren = childrenOf(departmentId);
@@ -1839,12 +1876,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           data.collapsedDepartments = [...collapsed];
         }
         render();
+        freezeBranchPositions(beforeBranchRects, descendantDepartmentIds(departmentId), scale);
         const afterCard = $(`.department[data-department-id="${CSS.escape(departmentId)}"]`); const afterRect = afterCard?.getBoundingClientRect();
         if (groupKey && beforeCenter && afterRect) {
-          const current = groupOffset(groupKey);
           const deltaX = (beforeCenter.x - (afterRect.left + afterRect.width / 2)) / scale;
           const deltaY = (beforeCenter.y - (afterRect.top + afterRect.height / 2)) / scale;
-          updateGroupPosition(groupKey, { x: current.x + deltaX, y: current.y + deltaY });
+          if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+            const current = groupOffset(groupKey);
+            updateGroupPosition(groupKey, { x: current.x + deltaX, y: current.y + deltaY });
+          }
         }
         saveData(false); drawConnections();
         toast(`${department.name} 하위 트리를 ${willExpand ? "펼쳤습니다" : "접었습니다"}.`);
