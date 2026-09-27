@@ -175,6 +175,7 @@
     .chart-panel-wide { display: flex; flex-direction: column; }
     .chart-panel-wide .donut-panel { flex: 1; min-height: 240px; }
     .chart-panel-tall .bar-row { grid-template-columns: minmax(120px, 1.5fr) minmax(52px, 1fr) 42px; }
+    .draw-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 30; }
     .org-canvas.line-drawing { cursor: crosshair; }
     .org-canvas.line-drawing .owner-connection-layer { z-index: 9; }
     .draw-preview { stroke: var(--teal); stroke-width: 2; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -240,7 +241,11 @@
     .canvas-wrap .people-stats svg .donut-slice, .canvas-wrap .people-stats svg .donut-label, .canvas-wrap .people-stats svg .donut-label * { cursor: pointer !important; }
     .canvas-wrap.is-panning { cursor: grabbing; }
     .org-canvas { --readability: 1; width: 2800px; min-height: 1480px; padding: 28px 60px 70px; background: var(--canvas); transform-origin: 0 0; user-select: none; -webkit-user-select: none; position: relative; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; backface-visibility: hidden; will-change: transform; }
-    .top-tree { display: flex; flex-direction: column; align-items: center; padding-top: 6px; min-height: 420px; position: relative; width: 100%; z-index: 2; }
+    .top-tree { display: flex; flex-direction: column; align-items: center; padding-top: 6px; min-height: 420px; position: relative; width: 100%; z-index: 5; pointer-events: none; }
+    .top-tree .exec-card, .top-tree .leader-move-handle, .top-tree .free-owner-group, .top-tree .department, .top-tree .person-row, .top-tree button { pointer-events: auto; }
+    .leader-side-slot, .connector-side-slot, .connector-spine { pointer-events: none; }
+    .top-tree.drag-active .leader-side-slot, .top-tree.drag-active .connector-side-slot, .top-tree.drag-active .connector-spine { pointer-events: auto; }
+
     .departments { position: relative; z-index: 2; }
     .owner-connection-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
     .connection-segment { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: square; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -256,10 +261,12 @@
     .connection-snap-indicator { fill: rgba(31, 111, 235, .15); stroke: var(--blue); stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
     .org-canvas.line-editing .owner-connection-layer { z-index: 8; }
     .org-canvas.line-editing .connection-path { pointer-events: stroke; cursor: move; }
+    .org-canvas.line-editing .connection-path.is-selected-path { stroke-width: 26; }
     .org-canvas.line-editing .connection-segment { pointer-events: stroke; cursor: pointer; }
     .btn.line-edit-action:disabled { opacity: .42; cursor: not-allowed; transform: none; }
     .free-connection-layer { display: none; }
-    .free-leader { position: absolute; z-index: 4; width: 280px; min-width: 280px; transform: translate(-50%, -50%); }
+    .free-leader { position: absolute; z-index: 8; width: 280px; min-width: 280px; transform: translate(-50%, -50%); pointer-events: none; }
+    .free-leader > .exec-card, .free-leader > .leader-move-handle { pointer-events: auto; }
     .free-leader > .exec-card { position: relative; z-index: 3; }
     .leader-align-guide { position: absolute; z-index: 3; display: none; pointer-events: none; background: rgba(31, 111, 235, .62); box-shadow: 0 0 0 1px rgba(255, 255, 255, .8); }
     .leader-align-guide.is-active { display: block; }
@@ -578,6 +585,7 @@
           <button class="btn fullscreen-exit" id="exitFullscreenBtn" type="button">전체화면 종료</button>
           <div class="org-canvas wide" id="orgCanvas">
             <svg class="owner-connection-layer" id="ownerConnectionLayer" aria-hidden="true"></svg>
+            <svg class="draw-layer" id="drawLayer" aria-hidden="true"></svg>
             <div class="top-tree" id="executiveTree"></div>
             <div class="departments" id="departmentsList" aria-label="파트 목록"></div>
           </div>
@@ -935,7 +943,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         destination.push(JSON.stringify(data)); historyLock = true;
         try { data = normalizeData(JSON.parse(serialized)); lastCommittedState = JSON.stringify(data); localStorage.setItem(STORAGE_KEY, lastCommittedState); }
         finally { historyLock = false; }
-        resetTransientSelection(); render(); renderInspector(); renderMonthlyPanel(); requestAnimationFrame(fitView); updateUndoActions();
+        const keptViewport = { ...viewport };
+        resetTransientSelection(); render(); renderInspector(); renderMonthlyPanel();
+        viewport.x = keptViewport.x; viewport.y = keptViewport.y; viewport.scale = keptViewport.scale;
+        requestAnimationFrame(() => { viewport.x = keptViewport.x; viewport.y = keptViewport.y; viewport.scale = keptViewport.scale; applyViewport(); drawConnections(); });
+        updateUndoActions();
       }
       function undoChange() {
         if (!undoStack.length) return;
@@ -1094,9 +1106,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const execSub = [person.role, person.position].map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "직책·소속팀 미입력";
           return `<button type="button" class="person-card exec-card${active}${searchClass}${statClass}" data-person-id="${esc(person.id)}" data-executive-id="${esc(person.id)}"${movable ? ` data-leader-move-card="${esc(person.id)}"` : ""} draggable="${executive && !movable}">${avatarMarkup(person, "executive")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(execHeading)}</span>${badges}</span><span class="person-role">${esc(execSub)}</span></span></button>`;
         }
-        const roleText = `${person.title || "직위 미입력"}${person.position ? ` · ${person.position}` : ""}`;
+        const rowHeading = [person.name || "이름 미입력", String(person.title || "").trim()].filter(Boolean).join(" ");
+        const roleText = [String(person.role || "").trim(), String(person.position || "").trim()].filter(Boolean).join(" · ") || "소속팀 미입력";
         const tenure = tenureText(person.joined);
-        return `<div class="person-row${active}${searchClass}${statClass}" data-row-id="${esc(person.id)}" draggable="${draggable}" data-department-id="${esc(departmentId)}"><button type="button" class="person-card" data-person-id="${esc(person.id)}">${avatarMarkup(person, "small")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(person.name)}</span>${badges}</span><span class="person-role">${esc(roleText)}</span><span class="person-date"><span>${person.joined ? `입사 ${esc(person.joined)}` : "입사일 미입력"}</span>${tenure ? `<span class="person-tenure">· ${esc(tenure)}</span>` : ""}</span></span></button><span class="drag-grip" aria-label="드래그하여 이동" title="드래그하여 이동">⠿</span></div>`;
+        return `<div class="person-row${active}${searchClass}${statClass}" data-row-id="${esc(person.id)}" draggable="${draggable}" data-department-id="${esc(departmentId)}"><button type="button" class="person-card" data-person-id="${esc(person.id)}">${avatarMarkup(person, "small")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(rowHeading)}</span>${badges}</span><span class="person-role">${esc(roleText)}</span><span class="person-date"><span>${person.joined ? `입사 ${esc(person.joined)}` : "입사일 미입력"}</span>${tenure ? `<span class="person-tenure">· ${esc(tenure)}</span>` : ""}</span></span></button><span class="drag-grip" aria-label="드래그하여 이동" title="드래그하여 이동">⠿</span></div>`;
       }
       function executiveStack(anchorId, placement, visibleExecutiveIds = null) {
         return data.executives.filter(person => (!visibleExecutiveIds || visibleExecutiveIds.has(person.id)) && person.placement === placement && person.anchorId === anchorId).map(person => personMarkup(person, { executive: true })).join("");
@@ -1247,6 +1260,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (dy <= tolerance && dy < dx) return "horizontal";
         return null;
       }
+      function orthogonalizePoints(points, deletedSegments) {
+        if (points.length < 2) return { points, deletedSegments };
+        const epsilon = 0.6;
+        const out = [{ ...points[0] }];
+        const sources = [];
+        let previousAxis = null;
+        for (let index = 0; index < points.length - 1; index += 1) {
+          const from = out[out.length - 1]; const to = points[index + 1];
+          const dx = to.x - from.x; const dy = to.y - from.y;
+          if (Math.abs(dx) <= epsilon && Math.abs(dy) <= epsilon) { out.push({ x: from.x, y: from.y }); sources.push(index); continue; }
+          if (Math.abs(dx) <= epsilon) { out.push({ x: from.x, y: to.y }); sources.push(index); previousAxis = "v"; continue; }
+          if (Math.abs(dy) <= epsilon) { out.push({ x: to.x, y: from.y }); sources.push(index); previousAxis = "h"; continue; }
+          const horizontalFirst = previousAxis === "v" ? true : previousAxis === "h" ? false : Math.abs(dx) >= Math.abs(dy);
+          if (horizontalFirst) { out.push({ x: to.x, y: from.y }); sources.push(index); out.push({ x: to.x, y: to.y }); sources.push(index); previousAxis = "v"; }
+          else { out.push({ x: from.x, y: to.y }); sources.push(index); out.push({ x: to.x, y: to.y }); sources.push(index); previousAxis = "h"; }
+        }
+        const mapped = new Set();
+        sources.forEach((source, index) => { if (deletedSegments.has(source)) mapped.add(index); });
+        return { points: out, deletedSegments: mapped };
+      }
       function straightenPoints(points, tolerance = AXIS_SNAP_TOLERANCE) {
         const last = points.length - 1;
         if (last < 1) return points;
@@ -1303,7 +1336,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           else if (maxY - minY <= straightTolerance && maxX - minX > straightTolerance) points.forEach(point => { point.y = start.y; });
         }
         straightenPoints(points, AXIS_SNAP_TOLERANCE);
-        return { start: points[0], end: points[points.length - 1], waypoints: points.slice(1, -1), points, deletedSegments: new Set(Array.isArray(saved.deletedSegments) ? saved.deletedSegments.map(Number) : []) };
+        let deleted = new Set(Array.isArray(saved.deletedSegments) ? saved.deletedSegments.map(Number) : []);
+        let routePoints = points;
+        if (!(connectionDrag && connectionDrag.key === layout.key)) {
+          const squared = orthogonalizePoints(points, deleted);
+          routePoints = squared.points; deleted = squared.deletedSegments;
+        }
+        return { start: routePoints[0], end: routePoints[routePoints.length - 1], waypoints: routePoints.slice(1, -1), points: routePoints, deletedSegments: deleted };
       }
       function pointOnDirectLine(layout, x, fallbackT = .5) {
         const route = connectionRoute(layout); const start = route.points[0]; const end = route.points[route.points.length - 1];
@@ -1513,6 +1552,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return { type: "group-line", groupKey: layout.snapGroupKey, start, end, center: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
         });
         if (selectedConnectionKey && !connectionLayouts.has(selectedConnectionKey)) { selectedConnectionKey = null; selectedConnectionPart = null; }
+        if (selectedConnectionKey) {
+          const selectedIndex = layouts.findIndex(layout => layout.key === selectedConnectionKey);
+          if (selectedIndex >= 0) layouts.push(layouts.splice(selectedIndex, 1)[0]);
+        }
         const paths = layouts.map(layout => {
           const route = connectionRoute(layout); const selected = lineEditMode && selectedConnectionKey === layout.key;
           const ownerDropId = layout.key.startsWith("owner:") ? layout.key.slice("owner:".length) : "";
@@ -1520,7 +1563,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             if (route.deletedSegments.has(index)) return "";
             const next = route.points[index + 1]; const selectedSegment = selected && selectedConnectionPart?.type === "segment" && selectedConnectionPart.index === index;
             const style = segmentStyleFor(layout.key, index);
-            return `<line class="connection-path leader-drop-path${ownerDropId ? " owner-drop-path" : ""}" data-connection-key="${esc(layout.key)}" data-leader-line-drop="${esc(layout.key)}" data-segment-index="${index}"${ownerDropId ? ` data-owner-drop="${esc(ownerDropId)}"` : ""} x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}"></line><line class="connection-segment${selectedSegment ? " is-selected" : ""}" data-connection-key="${esc(layout.key)}" data-segment-index="${index}" x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}" style="stroke:${style.color};stroke-width:${style.width};stroke-dasharray:${style.dashArray}"><title>세그먼트 선택 — 삭제 버튼 또는 Delete 키로 삭제</title></line>`;
+            return `<line class="connection-path leader-drop-path${ownerDropId ? " owner-drop-path" : ""}${selected ? " is-selected-path" : ""}" data-connection-key="${esc(layout.key)}" data-leader-line-drop="${esc(layout.key)}" data-segment-index="${index}"${ownerDropId ? ` data-owner-drop="${esc(ownerDropId)}"` : ""} x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}"></line><line class="connection-segment${selectedSegment ? " is-selected" : ""}" data-connection-key="${esc(layout.key)}" data-segment-index="${index}" x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}" style="stroke:${style.color};stroke-width:${style.width};stroke-dasharray:${style.dashArray}"><title>세그먼트 선택 — 삭제 버튼 또는 Delete 키로 삭제</title></line>`;
           }).join("");
           const handles = selected ? route.points.map((point, index) => {
             const endpoint = index === 0 ? "start" : (index === route.points.length - 1 ? "end" : "point");
@@ -1538,16 +1581,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return `${segments}${midpointHandles}${handles}`;
         }).join("");
         const snapIndicator = activeSnapPoint ? `<circle class="connection-snap-indicator" cx="${activeSnapPoint.x}" cy="${activeSnapPoint.y}" r="13"></circle>` : "";
-        let drawOverlay = "";
-        if (lineDrawMode) {
-          const startPoint = drawStartAnchor ? (resolveDrawAnchor(drawStartAnchor.spec) || drawStartAnchor.point) : null;
-          const hover = drawHoverAnchor ? drawHoverAnchor.point : drawHoverPoint;
-          if (startPoint && hover) drawOverlay += `<line class="draw-preview" x1="${startPoint.x}" y1="${startPoint.y}" x2="${hover.x}" y2="${hover.y}"></line>`;
-          if (startPoint) drawOverlay += `<circle class="draw-anchor is-start" cx="${startPoint.x}" cy="${startPoint.y}" r="7"></circle>`;
-          if (drawHoverAnchor) drawOverlay += `<circle class="draw-anchor is-hover" cx="${drawHoverAnchor.point.x}" cy="${drawHoverAnchor.point.y}" r="9"></circle>`;
-        }
         const width = Math.max(canvas.scrollWidth, canvas.offsetWidth); const height = Math.max(canvas.scrollHeight, canvas.offsetHeight);
-        svg.setAttribute("viewBox", `0 0 ${width} ${height}`); svg.setAttribute("width", width); svg.setAttribute("height", height); svg.style.width = `${width}px`; svg.style.height = `${height}px`; svg.innerHTML = `${paths}${snapIndicator}${drawOverlay}`; updateLineEditActions();
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`); svg.setAttribute("width", width); svg.setAttribute("height", height); svg.style.width = `${width}px`; svg.style.height = `${height}px`; svg.innerHTML = `${paths}${snapIndicator}`; updateLineEditActions(); if (lineDrawMode) renderDrawOverlay();
       }
       function renderExecutives() {
         const node = $("#executiveTree");
@@ -1975,28 +2010,46 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (spec.type === "point") return { x: Number(spec.x) || 0, y: Number(spec.y) || 0 };
         return null;
       }
-      function nearestDrawAnchor(rawPoint) {
-        const scale = viewport.scale || 1; const threshold = Math.max(30, 46 / scale);
-        let best = null;
-        const consider = (point, spec) => {
-          if (!point) return;
-          const distance = Math.hypot(rawPoint.x - point.x, rawPoint.y - point.y);
-          if (distance <= threshold && (!best || distance < best.distance)) best = { point: { x: point.x, y: point.y }, spec, distance };
-        };
-        personSnapTargets.forEach(target => consider(target.point, { type: "person", personId: target.personId, side: target.side }));
-        departmentSnapTargets.forEach(target => consider(target.point, { type: "department", departmentId: target.departmentId, side: target.side }));
+      let drawAnchorCache = [];
+      function buildDrawAnchorCache() {
+        const anchors = [];
+        personSnapTargets.forEach(target => anchors.push({ point: { ...target.point }, spec: { type: "person", personId: target.personId, side: target.side } }));
+        departmentSnapTargets.forEach(target => anchors.push({ point: { ...target.point }, spec: { type: "department", departmentId: target.departmentId, side: target.side } }));
         connectionLayouts.forEach((layout, key) => {
           const route = connectionRoute(layout); const points = route.points;
           points.forEach((point, index) => {
-            if (index === 0) consider(point, { type: "line", connectionKey: key, at: "start" });
-            else if (index === points.length - 1) consider(point, { type: "line", connectionKey: key, at: "end" });
-            else consider(point, { type: "line", connectionKey: key, at: "point", index });
+            if (index === 0) anchors.push({ point: { ...point }, spec: { type: "line", connectionKey: key, at: "start" } });
+            else if (index === points.length - 1) anchors.push({ point: { ...point }, spec: { type: "line", connectionKey: key, at: "end" } });
+            else anchors.push({ point: { ...point }, spec: { type: "line", connectionKey: key, at: "point", index } });
           });
           points.slice(0, -1).forEach((point, index) => {
             if (route.deletedSegments.has(index)) return;
             const next = points[index + 1];
-            consider({ x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }, { type: "line", connectionKey: key, at: "center", segmentIndex: index });
+            anchors.push({ point: { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }, spec: { type: "line", connectionKey: key, at: "center", segmentIndex: index } });
           });
+        });
+        drawAnchorCache = anchors;
+      }
+      function renderDrawOverlay() {
+        const layer = $("#drawLayer"); const canvas = $("#orgCanvas"); if (!layer || !canvas) return;
+        if (!lineDrawMode) { layer.innerHTML = ""; layer.removeAttribute("viewBox"); return; }
+        const width = Math.max(canvas.scrollWidth, canvas.offsetWidth); const height = Math.max(canvas.scrollHeight, canvas.offsetHeight);
+        layer.setAttribute("viewBox", `0 0 ${width} ${height}`); layer.setAttribute("width", width); layer.setAttribute("height", height);
+        layer.style.width = `${width}px`; layer.style.height = `${height}px`;
+        const startPoint = drawStartAnchor ? (resolveDrawAnchor(drawStartAnchor.spec) || drawStartAnchor.point) : null;
+        const hover = drawHoverAnchor ? drawHoverAnchor.point : drawHoverPoint;
+        let markup = "";
+        if (startPoint && hover) markup += `<line class="draw-preview" x1="${startPoint.x}" y1="${startPoint.y}" x2="${hover.x}" y2="${hover.y}"></line>`;
+        if (startPoint) markup += `<circle class="draw-anchor is-start" cx="${startPoint.x}" cy="${startPoint.y}" r="7"></circle>`;
+        if (drawHoverAnchor) markup += `<circle class="draw-anchor is-hover" cx="${drawHoverAnchor.point.x}" cy="${drawHoverAnchor.point.y}" r="9"></circle>`;
+        layer.innerHTML = markup;
+      }
+      function nearestDrawAnchor(rawPoint) {
+        const scale = viewport.scale || 1; const threshold = Math.max(30, 46 / scale);
+        let best = null;
+        drawAnchorCache.forEach(anchor => {
+          const distance = Math.hypot(rawPoint.x - anchor.point.x, rawPoint.y - anchor.point.y);
+          if (distance <= threshold && (!best || distance < best.distance)) best = { point: { ...anchor.point }, spec: anchor.spec, distance };
         });
         return best;
       }
@@ -2011,7 +2064,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const canvas = $("#orgCanvas"); canvas.classList.toggle("line-drawing", enabled); canvas.classList.toggle("line-editing", lineEditMode);
         const button = $("#drawLineBtn");
         if (button) { button.setAttribute("aria-pressed", String(enabled)); button.textContent = enabled ? "연결선 그리는 중" : "연결선 그리기"; }
-        drawConnections();
+        drawConnections(); if (enabled) buildDrawAnchorCache(); renderDrawOverlay();
         toast(enabled ? "시작점을 누르고 끝점을 누르면 선이 그려집니다. 사람·파트 박스 4분점과 기존 선의 시작·중심·끝점에 자석처럼 붙습니다. Esc로 취소합니다." : "연결선 그리기를 종료했습니다.");
       }
       function commitDrawnLine(endAnchor) {
@@ -2024,7 +2077,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         data.customLines ||= [];
         data.customLines.push({ id, start: { ...start.spec, point: { ...startPoint } }, end: { ...endAnchor.spec, point: { ...endPoint } } });
         drawStartAnchor = null; drawHoverPoint = null; drawHoverAnchor = null;
-        saveData(false); drawConnections(); toast("연결선을 추가했습니다. 계속 그리거나 Esc로 종료하세요.");
+        saveData(false); drawConnections(); buildDrawAnchorCache(); renderDrawOverlay(); toast("연결선을 추가했습니다. 계속 그리거나 Esc로 종료하세요.");
       }
       const LEADER_PLACEMENTS = [["center", "중앙 계층"], ["left", "왼쪽 배치"], ["right", "오른쪽 배치"], ["connector-left", "계층 사이 왼쪽"], ["connector-right", "계층 사이 오른쪽"], ["free", "자유 배치"]];
       function leaderParentId(person) {
@@ -2266,23 +2319,38 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         delete source.freeX; delete source.freeY;
         saveData(false); render(); renderInspector(); toast(connector ? `연결선 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.` : `${target.name}님의 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.`);
       }
-      function leaderAlignmentForPoint(raw, sourceId) {
-        const tree = $("#executiveTree"); if (!tree) return null;
+      let leaderAlignTargets = null;
+      function buildLeaderAlignTargets(sourceId) {
+        const tree = $("#executiveTree"); if (!tree) { leaderAlignTargets = []; return leaderAlignTargets; }
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
-        const threshold = 26 / scale;
-        let bestX = null; let bestY = null;
+        const targets = [];
         $$('[data-executive-id]', tree).forEach(node => {
           if (node.dataset.executiveId === sourceId) return;
           const rect = node.getBoundingClientRect();
-          const center = { x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: (rect.top + rect.height / 2 - treeRect.top) / scale };
-          const dx = Math.abs(raw.x - center.x); const dy = Math.abs(raw.y - center.y);
-          if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: center.x, distance: dx, targetId: node.dataset.executiveId };
-          if (dy <= threshold && (!bestY || dy < bestY.distance)) bestY = { value: center.y, distance: dy, targetId: node.dataset.executiveId };
+          targets.push({ x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: (rect.top + rect.height / 2 - treeRect.top) / scale, id: node.dataset.executiveId, axis: "both" });
         });
         $$('.department[data-department-id]', $("#orgCanvas")).forEach(node => {
           const rect = node.getBoundingClientRect();
-          const centerX = (rect.left + rect.width / 2 - treeRect.left) / scale; const dx = Math.abs(raw.x - centerX);
-          if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: centerX, distance: dx, targetId: node.dataset.departmentId, type: "department-line" };
+          targets.push({ x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: null, id: node.dataset.departmentId, axis: "x", type: "department-line" });
+        });
+        leaderAlignTargets = targets;
+        return targets;
+      }
+      function leaderAlignmentForPoint(raw, sourceId) {
+        const tree = $("#executiveTree"); if (!tree) return null;
+        const scale = viewport.scale || 1;
+        const threshold = 8 / scale;
+        const targets = leaderAlignTargets || buildLeaderAlignTargets(sourceId);
+        let bestX = null; let bestY = null;
+        targets.forEach(target => {
+          if (Number.isFinite(target.x)) {
+            const dx = Math.abs(raw.x - target.x);
+            if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: target.x, distance: dx, targetId: target.id, type: target.type };
+          }
+          if (target.axis === "both" && Number.isFinite(target.y)) {
+            const dy = Math.abs(raw.y - target.y);
+            if (dy <= threshold && (!bestY || dy < bestY.distance)) bestY = { value: target.y, distance: dy, targetId: target.id };
+          }
         });
         return { x: bestX ? bestX.value : raw.x, y: bestY ? bestY.value : raw.y, snapX: bestX, snapY: bestY };
       }
@@ -2297,6 +2365,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (horizontal) { horizontal.classList.toggle("is-active", Boolean(snap?.snapY)); if (snap?.snapY) horizontal.style.top = `${snap.y}px`; }
       }
       function clearLeaderAlignmentGuides() {
+        leaderAlignTargets = null;
         leaderDragSnap = null;
         $("#leaderAlignGuideV")?.classList.remove("is-active");
         $("#leaderAlignGuideH")?.classList.remove("is-active");
@@ -2918,19 +2987,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!lineDrawMode) return;
         const raw = canvasPointFromEvent(event);
         drawHoverPoint = raw; drawHoverAnchor = nearestDrawAnchor(raw);
-        drawConnections();
+        renderDrawOverlay();
       });
-      $("#orgCanvas").addEventListener("click", event => {
-        if (!lineDrawMode) return;
+      $("#orgCanvas").addEventListener("pointerdown", event => {
+        if (!lineDrawMode || event.button !== 0) return;
         event.preventDefault(); event.stopPropagation();
         const raw = canvasPointFromEvent(event);
         const anchor = nearestDrawAnchor(raw) || { point: raw, spec: { type: "point", x: raw.x, y: raw.y } };
-        if (!drawStartAnchor) { drawStartAnchor = anchor; drawConnections(); toast("끝점을 클릭하세요."); return; }
+        if (!drawStartAnchor) { drawStartAnchor = anchor; drawHoverAnchor = anchor; drawHoverPoint = anchor.point; renderDrawOverlay(); toast("끝점을 클릭하세요."); return; }
         commitDrawnLine(anchor);
       }, true);
+      $("#orgCanvas").addEventListener("click", event => { if (lineDrawMode) { event.preventDefault(); event.stopPropagation(); } }, true);
       $("#lineEditBtn").addEventListener("click", event => {
         lineEditMode = !lineEditMode; selectedConnectionKey = null; selectedConnectionPart = null; connectionDrag = null; activeSnapPoint = null;
-        if (lineEditMode && lineDrawMode) { lineDrawMode = false; drawStartAnchor = null; drawHoverAnchor = null; const drawButton = $("#drawLineBtn"); if (drawButton) { drawButton.setAttribute("aria-pressed", "false"); drawButton.textContent = "연결선 그리기"; } $("#orgCanvas").classList.remove("line-drawing"); }
+        if (lineEditMode && lineDrawMode) { lineDrawMode = false; drawStartAnchor = null; drawHoverAnchor = null; renderDrawOverlay(); const drawButton = $("#drawLineBtn"); if (drawButton) { drawButton.setAttribute("aria-pressed", "false"); drawButton.textContent = "연결선 그리기"; } $("#orgCanvas").classList.remove("line-drawing"); }
         const canvas = $("#orgCanvas"); canvas.classList.toggle("line-editing", lineEditMode);
         event.currentTarget.setAttribute("aria-pressed", String(lineEditMode));
         event.currentTarget.textContent = lineEditMode ? "연결선 편집 중" : "연결선 편집";
@@ -3024,7 +3094,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
       const endConnectionDrag = event => {
         if (!connectionDrag || connectionDrag.id !== event.pointerId) return;
-        connectionDrag = null; activeSnapPoint = null; saveData(false); drawConnections();
+        const key = connectionDrag.key;
+        connectionDrag = null; activeSnapPoint = null;
+        drawConnections(); persistOrthogonalRoute(key); saveData(false); drawConnections();
       };
       window.addEventListener("pointerup", endConnectionDrag); window.addEventListener("pointercancel", endConnectionDrag);
       function deleteSelectedPoint() {
@@ -3140,7 +3212,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "y") {
           event.preventDefault(); redoChange(); return;
         }
-        if (event.key === "Escape" && lineDrawMode) { event.preventDefault(); if (drawStartAnchor) { drawStartAnchor = null; drawHoverAnchor = null; drawConnections(); toast("시작점 지정을 취소했습니다."); } else setLineDrawMode(false); return; }
+        if (event.key === "Escape" && lineDrawMode) { event.preventDefault(); if (drawStartAnchor) { drawStartAnchor = null; drawHoverAnchor = null; renderDrawOverlay(); toast("시작점 지정을 취소했습니다."); } else setLineDrawMode(false); return; }
         if (!lineEditMode || (event.key !== "Delete" && event.key !== "Backspace") || event.target.matches("input, textarea")) return;
         event.preventDefault(); selectedConnectionPart?.type === "point" ? deleteSelectedPoint() : deleteSelectedSegment();
       });
@@ -3217,6 +3289,23 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
         return frozen;
       }
+      function persistOrthogonalRoute(key) {
+        const layout = connectionLayouts.get(key); if (!layout) return false;
+        const saved = data.lineRoutes?.[key]; if (!saved) return false;
+        const route = connectionRoute(layout);
+        const waypoints = route.points.slice(1, -1).map(point => ({ x: point.x, y: point.y }));
+        const current = Array.isArray(saved.waypoints) ? saved.waypoints : null;
+        const same = current && current.length === waypoints.length && current.every((point, index) => Math.abs(Number(point.x) - waypoints[index].x) < .01 && Math.abs(Number(point.y) - waypoints[index].y) < .01);
+        if (same) return false;
+        saved.waypoints = waypoints;
+        saved.deletedSegments = [...route.deletedSegments].sort((a, b) => a - b);
+        return true;
+      }
+      let connectionRedrawFrame = null;
+      function requestConnectionRedraw() {
+        if (connectionRedrawFrame !== null) return;
+        connectionRedrawFrame = requestAnimationFrame(() => { connectionRedrawFrame = null; drawConnections(); });
+      }
       function pinConnectionPoints(frozen) {
         if (!frozen || !frozen.size) { drawConnections(); return; }
         drawConnections();
@@ -3245,12 +3334,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           saved.waypoints = waypoints;
         });
         drawConnections();
+        let squared = false;
+        frozen.forEach((points, key) => { if (persistOrthogonalRoute(key)) squared = true; });
+        if (squared) drawConnections();
       }
-      function scheduleLeaderConnections(frozen) {
+      function scheduleLeaderConnections() {
         if (leaderConnectionFrame !== null) return;
         leaderConnectionFrame = requestAnimationFrame(() => {
           leaderConnectionFrame = null;
-          if (leaderMoveDrag) pinConnectionPoints(frozen);
+          if (leaderMoveDrag) drawConnections();
         });
       }
       $("#orgChartApp").addEventListener("pointerdown", event => {
@@ -3269,6 +3361,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const cardRect = cardNode?.getBoundingClientRect() || rect;
           const treeRect = $("#executiveTree").getBoundingClientRect(); const scale = viewport.scale || 1;
           normalizeAttachedLeaderEndpoints(id, cardNode);
+          buildLeaderAlignTargets(id);
           leaderMoveDrag = {
             id, pointerId: event.pointerId, scale, handle: leaderHandle, trigger: leaderTrigger, node, didMove: false,
             mode: centerNode ? "center" : "free",
@@ -3316,7 +3409,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (leaderMoveDrag.mode === "center") {
             node.style.setProperty("--leader-x", `${leaderMoveDrag.nextX}px`); node.style.setProperty("--leader-y", `${leaderMoveDrag.nextY}px`);
           } else { node.style.left = `${leaderMoveDrag.nextX}px`; node.style.top = `${leaderMoveDrag.nextY}px`; }
-          scheduleLeaderConnections(leaderMoveDrag.frozen);
+          scheduleLeaderConnections();
           return;
         }
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
@@ -3326,13 +3419,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           data.subgroupOffsets ||= {}; data.subgroupOffsets[departmentId] = next;
           const container = $(`[data-subgroup-container="${departmentId}"]`);
           if (container) { container.style.setProperty("--subgroup-x", `${next.x}px`); container.style.setProperty("--subgroup-y", `${next.y}px`); }
-          drawConnections(); return;
+          requestConnectionRedraw(); return;
         }
         if (!groupDrag || groupDrag.id !== event.pointerId) return;
         event.preventDefault();
         const scale = viewport.scale || 1;
         updateGroupPosition(groupDrag.key, { x: groupDrag.origin.x + (event.clientX - groupDrag.startX) / scale, y: groupDrag.origin.y + (event.clientY - groupDrag.startY) / scale });
-        drawConnections();
+        requestConnectionRedraw();
       });
       const endGroupDrag = event => {
         if (leaderMoveDrag && leaderMoveDrag.pointerId === event.pointerId) {
@@ -3383,6 +3476,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         event.preventDefault(); setZoom(viewport.scale * (event.deltaY > 0 ? .9 : 1.1), event.clientX, event.clientY);
       }, { passive: false });
       canvasWrap.addEventListener("pointerdown", event => {
+        if (lineDrawMode) return;
         if (event.button !== 0 || event.target.closest("button, input, select, textarea, .person-row, .department, .people-stats, .monthly-panel, .connection-path, .connection-segment, .connection-handle, .connection-midpoint-handle")) return;
         event.preventDefault();
         panState = { id: event.pointerId, startX: event.clientX, startY: event.clientY, originX: viewport.x, originY: viewport.y };
