@@ -69,10 +69,12 @@
     .command-menu-trigger::after { content: "▾"; margin-left: 7px; font-size: 10px; color: var(--muted); transition: transform .16s ease; }
     .command-menu-trigger[aria-expanded="true"]::after { transform: rotate(180deg); }
     .command-menu-panel { position: absolute; z-index: 70; top: calc(100% + 10px); left: 0; display: flex; align-items: center; gap: 6px; width: max-content; max-width: min(920px, calc(100vw - 38px)); padding: 8px; overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, .98); box-shadow: 0 16px 36px rgba(31, 65, 66, .18); }
-    .command-menu.edit-menu .command-menu-panel { left: auto; right: 0; }
-    .command-menu-panel[hidden] { display: none; }
+    .command-menu.edit-menu .command-menu-panel { left: auto; right: 0; display: grid; grid-auto-flow: row; justify-items: start; gap: 7px; overflow-x: visible; }
+    .menu-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .command-menu-panel[hidden], .command-menu.edit-menu .command-menu-panel[hidden] { display: none !important; }
     .command-menu-panel .btn { min-height: 30px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
-    .command-menu-panel .line-style-controls { flex: 0 0 auto; }
+    .command-menu-panel .line-edit-group { display: grid; gap: 7px; justify-items: start; width: 0; min-width: 100%; }
+    .command-menu-panel .line-style-controls { width: 100%; padding-top: 7px; border-top: 1px solid var(--line); }
     .view-option.is-active { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); font-weight: 700; }
     .file-menu { position: relative; }
     .file-menu > summary { list-style: none; cursor: pointer; user-select: none; }
@@ -181,8 +183,33 @@
     .draw-preview { stroke: var(--teal); stroke-width: 2; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; pointer-events: none; }
     .draw-anchor { fill: rgba(22, 138, 118, .16); stroke: var(--teal); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
     .draw-anchor.is-start { fill: var(--teal); stroke: #fff; }
+    .combo { position: relative; }
+    .combo .combo-input { width: 100%; box-sizing: border-box; padding-right: 30px; background-image: none; }
+    .combo-toggle { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer; }
+    .combo-toggle:hover { color: var(--ink); background: var(--surface-soft); }
+    .combo.is-open .combo-toggle { transform: translateY(-50%) rotate(180deg); }
+    .combo-list { position: absolute; z-index: 40; top: calc(100% + 3px); left: 0; right: 0; max-height: 222px; overflow-y: auto; padding: 4px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); box-shadow: 0 14px 34px rgba(31, 65, 66, .18); display: grid; gap: 1px; }
+    .combo-list[hidden] { display: none; }
+    .combo-option { width: 100%; padding: 6px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font-size: 12px; cursor: pointer; }
+    .combo-option[hidden] { display: none; }
+    .combo-option:hover { background: var(--surface-soft); }
+    .combo-option.is-current { background: var(--blue); color: #fff; font-weight: 700; }
+    .combo-empty { padding: 7px 9px; color: var(--muted); font-size: 11px; }
     .field-group { padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-soft); display: grid; gap: 9px; }
+    details.field-group { padding: 0; }
+    details.field-group > summary { list-style: none; cursor: pointer; padding: 11px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border-radius: 11px; }
+    details.field-group > summary::-webkit-details-marker { display: none; }
+    details.field-group > summary::after { content: "⌄"; color: var(--muted); font-size: 13px; transition: transform .16s; }
+    details.field-group[open] > summary::after { transform: rotate(180deg); }
+    details.field-group[open] > summary { border-bottom: 1px solid var(--line); border-radius: 11px 11px 0 0; }
+    details.field-group > .field { margin: 0 11px; }
+    details.field-group > .field:last-child { margin-bottom: 11px; }
+    details.field-group > .field + .field { margin-top: 9px; }
     .field-group-title { color: var(--ink); font-size: 12px; font-weight: 800; }
+    .part-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+    .part-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 5px 3px 8px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); font-size: 11px; font-weight: 700; }
+    .part-chip button { width: 16px; height: 16px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--surface-soft); color: var(--muted); font-size: 11px; line-height: 1; cursor: pointer; }
+    .part-chip button:hover { background: #ffe9ea; color: #c51d27; }
     .order-controls { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px; }
     .order-state { color: var(--muted); font-size: 11px; text-align: center; white-space: nowrap; }
     .stat-list-head { padding: 2px 0 6px; color: var(--teal); font-size: 11px; font-weight: 800; }
@@ -313,6 +340,14 @@
     .leader-move-handle { position: absolute; top: -11px; right: -11px; z-index: 12; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 1px solid #9db1b5; border-radius: 50%; background: #fff; color: #46666b; font-size: 12px; line-height: 1; cursor: move; opacity: .22; transition: opacity .16s, border-color .16s, color .16s, box-shadow .16s; }
     .leader-move-handle { touch-action: none; user-select: none; -webkit-user-select: none; }
     .leader-center:hover > .leader-move-handle, .free-leader:hover > .leader-move-handle, .leader-move-handle:hover, .leader-move-handle:focus-visible, .leader-move-handle.is-moving { opacity: 1; border-color: var(--teal); color: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); }
+    .leader-branch { display: flex; align-items: flex-start; justify-content: center; gap: 48px; width: 2200px; }
+    .leader-branch-item { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+    .leader-branch .leader-level { width: auto; min-width: 320px; grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr); gap: 24px; }
+    .leader-branch .leader-side-slot { min-width: 120px; }
+    .leader-branch .leader-connector { width: auto; min-width: 320px; grid-template-columns: minmax(120px, 1fr) 1px minmax(120px, 1fr); column-gap: 24px; }
+    .leader-side-item { position: relative; width: max-content; transform: translate(var(--leader-x, 0px), var(--leader-y, 0px)); pointer-events: none; }
+    .leader-side-item > .exec-card, .leader-side-item > .leader-move-handle { pointer-events: auto; }
+    .leader-side-item > .exec-card[data-leader-move-card] { cursor: grab; touch-action: none; }
     .leader-center > .exec-card[data-leader-move-card], .free-leader > .exec-card[data-leader-move-card] { cursor: grab; touch-action: none; }
     .leader-center.leader-box-moving > .exec-card, .free-leader.leader-box-moving > .exec-card { cursor: grabbing; box-shadow: 0 0 0 3px rgba(22, 138, 118, .25), 0 14px 30px rgba(31, 65, 66, .16); }
     .org-canvas.leader-drag-active .owner-connection-layer { z-index: 8; }
@@ -320,9 +355,6 @@
     .leader-side-slot.left { grid-column: 1; align-items: flex-start; }
     .leader-side-slot.right { grid-column: 3; align-items: flex-end; }
     .leader-side-slot .exec-card { position: relative; z-index: 2; }
-    .leader-side-slot.has-items::after { content: ""; position: absolute; top: 50%; width: calc(100% + 72px); height: 1px; background: var(--line-strong); }
-    .leader-side-slot.left.has-items::after { right: -72px; }
-    .leader-side-slot.right.has-items::after { left: -72px; }
     .top-tree.drag-active .leader-side-slot, .top-tree.drag-active .connector-side-slot { outline: none; }
     .leader-side-slot.side-drag-over, .connector-side-slot.side-drag-over { background: var(--blue-soft); box-shadow: inset 0 0 0 2px rgba(76, 120, 190, .22); }
     .leader-connector { width: 2200px; min-height: 44px; display: grid; grid-template-columns: minmax(760px, 1fr) 1px minmax(760px, 1fr); column-gap: 72px; align-items: center; position: relative; }
@@ -332,9 +364,6 @@
     .connector-side-slot.left { grid-column: 1; grid-row: 1; align-items: flex-start; }
     .connector-side-slot.right { grid-column: 3; grid-row: 1; align-items: flex-end; }
     .connector-side-slot .exec-card { position: relative; z-index: 2; }
-    .connector-side-slot.has-items::after { content: ""; position: absolute; top: 50%; width: calc(100% + 72px); height: 1px; background: var(--line-strong); }
-    .connector-side-slot.left.has-items::after { right: -72px; }
-    .connector-side-slot.right.has-items::after { left: -72px; }
     .connector-spine.connector-drag-over { width: 300px; border-radius: 10px; background: var(--teal-soft); box-shadow: inset 0 0 0 2px rgba(22, 138, 118, .38); }
     .connector-v { width: 1px; height: 20px; background: var(--line-strong); }
     .connector-v.long { height: 27px; }
@@ -436,7 +465,14 @@
     .zoom-value { min-width: 42px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 12px; text-align: center; }
     .drop-hint { display: none; position: absolute; inset: auto 12px -13px; z-index: 2; text-align: center; background: var(--teal); color: white; border-radius: 7px; padding: 5px; font-size: 10px; }
     .department.drag-over .drop-hint { display: block; }
-    .line-style-controls { height: 30px; display: flex; align-items: center; gap: 5px; }
+    .line-style-controls { min-height: 30px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+    .line-color-picker { display: inline-flex; align-items: center; gap: 6px; }
+    .line-color-palette { display: inline-grid; grid-template-columns: repeat(6, 16px); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .color-swatch { width: 16px; height: 16px; padding: 0; border: 1px solid rgba(31, 65, 66, .22); border-radius: 4px; background: var(--swatch, #20333a); cursor: pointer; }
+    .color-swatch:hover { transform: scale(1.12); }
+    .color-swatch.is-active { border-color: #20333a; box-shadow: 0 0 0 2px rgba(32, 51, 58, .28); }
+    .line-color-custom { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--muted); cursor: pointer; }
+    .line-style-label { color: var(--muted); font-size: 11px; font-weight: 700; margin-right: 2px; }
     .line-style-controls[hidden] { display: none; }
     .line-style-controls select, .line-style-controls input { height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 11px; }
     .line-style-controls select { padding: 0 7px; }
@@ -532,17 +568,23 @@
           <div class="command-menu edit-menu">
             <button class="btn command-menu-trigger" id="editMenuBtn" type="button" aria-expanded="false" aria-controls="editMenuPanel">편집</button>
             <div class="command-menu-panel" id="editMenuPanel" hidden>
+              <div class="menu-row">
               <button class="btn" id="drawLineBtn" type="button" aria-pressed="false" title="시작점과 끝점을 클릭해 새 연결선을 그립니다. 박스 4분점과 기존 선의 시작·중심·끝점에 자석처럼 붙습니다.">연결선 그리기</button>
               <button class="btn" id="lineEditBtn" type="button" aria-pressed="false">연결선 편집</button>
+              <button class="btn line-edit-action" id="straightenLineBtn" type="button" title="조직도의 모든 연결선을 수직·수평으로 맞춥니다.">전체 직선 정렬</button>
+              <button class="btn" id="optimizeLayoutBtn" type="button" data-tooltip="수동 배치와 연결선 접점을 정리하고 조직도를 기본 수평·수직 구조로 재정렬">최적화 정렬</button>
+              </div>
+              <div class="line-edit-group" id="lineEditGroup">
+              <div class="menu-row">
               <button class="btn line-edit-action" id="deletePointBtn" type="button" disabled>접점 삭제</button>
               <button class="btn line-edit-action" id="deleteSegmentBtn" type="button" disabled>세그먼트 삭제</button>
               <button class="btn line-edit-action" id="restoreSegmentBtn" type="button" disabled>삭제 세그먼트 복원</button>
-              <button class="btn line-edit-action" id="straightenLineBtn" type="button" title="조직도의 모든 연결선을 수직·수평으로 맞춥니다.">전체 직선 정렬</button>
-              <button class="btn" id="optimizeLayoutBtn" type="button" data-tooltip="수동 배치와 연결선 접점을 정리하고 조직도를 기본 수평·수직 구조로 재정렬">최적화 정렬</button>
-              <div class="line-style-controls" id="lineStyleControls" hidden aria-label="선택한 세그먼트 스타일">
+              </div>
+              <div class="line-style-controls" id="lineStyleControls" hidden aria-label="선택한 연결선 스타일"><span class="line-style-label">선 스타일</span><select id="lineScopeField" aria-label="적용 범위"><option value="line" selected>선 전체</option><option value="segment">이 구간만</option></select>
                 <select id="lineWidthField" aria-label="선 두께"><option value="1">1px</option><option value="2" selected>2px</option><option value="3">3px</option><option value="4">4px</option><option value="6">6px</option></select>
-                <input id="lineColorField" type="color" value="#20333a" aria-label="선 색상">
                 <select id="lineDashField" aria-label="선 종류"><option value="solid">실선</option><option value="dashed">파선</option><option value="dotted">점선</option></select>
+                <span class="line-color-picker"><span class="line-color-palette" id="lineColorPalette" role="group" aria-label="선 색상 팔레트"><button class="color-swatch" type="button" data-line-color="#20333a" style="--swatch:#20333a" title="#20333a" aria-label="선 색상 #20333a"></button><button class="color-swatch" type="button" data-line-color="#5a6a72" style="--swatch:#5a6a72" title="#5a6a72" aria-label="선 색상 #5a6a72"></button><button class="color-swatch" type="button" data-line-color="#9aa5ab" style="--swatch:#9aa5ab" title="#9aa5ab" aria-label="선 색상 #9aa5ab"></button><button class="color-swatch" type="button" data-line-color="#168a76" style="--swatch:#168a76" title="#168a76" aria-label="선 색상 #168a76"></button><button class="color-swatch" type="button" data-line-color="#21b573" style="--swatch:#21b573" title="#21b573" aria-label="선 색상 #21b573"></button><button class="color-swatch" type="button" data-line-color="#1f6fd0" style="--swatch:#1f6fd0" title="#1f6fd0" aria-label="선 색상 #1f6fd0"></button><button class="color-swatch" type="button" data-line-color="#4aa8ff" style="--swatch:#4aa8ff" title="#4aa8ff" aria-label="선 색상 #4aa8ff"></button><button class="color-swatch" type="button" data-line-color="#6c5ce7" style="--swatch:#6c5ce7" title="#6c5ce7" aria-label="선 색상 #6c5ce7"></button><button class="color-swatch" type="button" data-line-color="#d64ea3" style="--swatch:#d64ea3" title="#d64ea3" aria-label="선 색상 #d64ea3"></button><button class="color-swatch" type="button" data-line-color="#e55c61" style="--swatch:#e55c61" title="#e55c61" aria-label="선 색상 #e55c61"></button><button class="color-swatch" type="button" data-line-color="#f08a24" style="--swatch:#f08a24" title="#f08a24" aria-label="선 색상 #f08a24"></button><button class="color-swatch" type="button" data-line-color="#c9a227" style="--swatch:#c9a227" title="#c9a227" aria-label="선 색상 #c9a227"></button></span><label class="line-color-custom" title="팔레트에 없는 색을 직접 고릅니다."><input id="lineColorField" type="color" value="#20333a" aria-label="선 색상 직접 선택"><span>직접</span></label></span>
+              </div>
               </div>
             </div>
           </div>
@@ -721,6 +763,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let drawHoverAnchor = null;
       let selectedConnectionKey = null;
       let selectedConnectionPart = null;
+      let connectionSelection = [];
       let connectionDrag = null;
       let groupDrag = null;
       let leaderMoveDrag = null;
@@ -735,6 +778,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       let draggedRankValue = null;
       let draggedRankGroup = null;
       let personEditBaseline = null;
+      let leaderLayoutOpen = false;
       let departmentEditBaseline = null;
       let leaderDragSnap = null;
       let photoTargetId = null;
@@ -819,6 +863,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!normalized.subgroupOffsets || typeof normalized.subgroupOffsets !== "object") normalized.subgroupOffsets = {};
         if (!Array.isArray(normalized.collapsedDepartments)) normalized.collapsedDepartments = [];
         if (!Array.isArray(normalized.viewExpanded)) normalized.viewExpanded = [];
+        const executiveById = new Map(normalized.executives.map(person => [person.id, person]));
+        Object.keys(normalized.lineRoutes).forEach(key => {
+          const [prefix, id] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+          if (prefix === "leader") { const person = executiveById.get(id); if (!person || person.placement !== "free") delete normalized.lineRoutes[key]; }
+          if (prefix === "connector") { const person = executiveById.get(id); if (!person || (person.placement !== "connector-left" && person.placement !== "connector-right")) delete normalized.lineRoutes[key]; }
+          if (prefix === "side") { const person = executiveById.get(id); if (!person || (person.placement !== "left" && person.placement !== "right")) delete normalized.lineRoutes[key]; }
+          if (prefix === "center") { const person = executiveById.get(id); if (!person || person.placement !== "center") delete normalized.lineRoutes[key]; }
+        });
         if (!Array.isArray(normalized.customLines)) normalized.customLines = [];
         normalized.customLines = normalized.customLines.filter(line => line && line.id && line.start && line.end);
         const departmentParentIds = new Set(normalized.departments.map(department => department.parentId).filter(Boolean));
@@ -863,6 +915,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (!positionOrder.includes(rank) && !roleOrder.includes(rank) && !normalized.hiddenRanks.includes(rank)) roleOrder.push(rank);
         });
         normalized.executives.forEach(person => {
+          if (person.reportsTo === undefined) person.reportsTo = null;
           if (!person.placement) person.placement = "center";
           if (person.anchorId === undefined) person.anchorId = null;
         });
@@ -1112,7 +1165,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return `<div class="person-row${active}${searchClass}${statClass}" data-row-id="${esc(person.id)}" draggable="${draggable}" data-department-id="${esc(departmentId)}"><button type="button" class="person-card" data-person-id="${esc(person.id)}">${avatarMarkup(person, "small")}<span class="person-copy"><span class="person-heading"><span class="person-name">${esc(rowHeading)}</span>${badges}</span><span class="person-role">${esc(roleText)}</span><span class="person-date"><span>${person.joined ? `입사 ${esc(person.joined)}` : "입사일 미입력"}</span>${tenure ? `<span class="person-tenure">· ${esc(tenure)}</span>` : ""}</span></span></button><span class="drag-grip" aria-label="드래그하여 이동" title="드래그하여 이동">⠿</span></div>`;
       }
       function executiveStack(anchorId, placement, visibleExecutiveIds = null) {
-        return data.executives.filter(person => (!visibleExecutiveIds || visibleExecutiveIds.has(person.id)) && person.placement === placement && person.anchorId === anchorId).map(person => personMarkup(person, { executive: true })).join("");
+        return data.executives.filter(person => (!visibleExecutiveIds || visibleExecutiveIds.has(person.id)) && person.placement === placement && person.anchorId === anchorId).map(person => {
+          const offset = data.centerOffsets?.[person.id] || {}; const x = Number(offset.x) || 0; const y = Number(offset.y) || 0;
+          return `<div class="leader-side-item" data-leader-center="${esc(person.id)}" style="--leader-x:${x}px;--leader-y:${y}px">${personMarkup(person, { executive: true, movable: true })}<button class="leader-move-handle" type="button" data-leader-move="${esc(person.id)}" aria-label="구성원 박스 이동" title="카드 또는 이 아이콘을 드래그하여 이동합니다">✥</button></div>`;
+        }).join("");
       }
       function renderLeaderLevel(person, visibleExecutiveIds = null) {
         const left = executiveStack(person.id, "left", visibleExecutiveIds); const right = executiveStack(person.id, "right", visibleExecutiveIds);
@@ -1344,6 +1400,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
         return { start: routePoints[0], end: routePoints[routePoints.length - 1], waypoints: routePoints.slice(1, -1), points: routePoints, deletedSegments: deleted };
       }
+      function pointOnRouteAtY(route, y) {
+        const points = route?.points || []; if (points.length < 2) return null;
+        let best = null;
+        for (let index = 0; index < points.length - 1; index += 1) {
+          if (route.deletedSegments.has(index)) continue;
+          const a = points[index]; const b = points[index + 1];
+          const minY = Math.min(a.y, b.y); const maxY = Math.max(a.y, b.y);
+          if (y >= minY - .5 && y <= maxY + .5) {
+            const span = b.y - a.y;
+            const t = Math.abs(span) < .5 ? 0 : Math.max(0, Math.min(1, (y - a.y) / span));
+            return { x: a.x + (b.x - a.x) * t, y };
+          }
+          const clampedY = y < minY ? minY : maxY;
+          const distance = Math.abs(y - clampedY);
+          const candidate = { x: Math.abs(clampedY - a.y) <= Math.abs(clampedY - b.y) ? a.x : b.x, y: clampedY };
+          if (!best || distance < best.distance) best = { distance, point: candidate };
+        }
+        return best ? best.point : null;
+      }
       function pointOnDirectLine(layout, x, fallbackT = .5) {
         const route = connectionRoute(layout); const start = route.points[0]; const end = route.points[route.points.length - 1];
         const span = end.x - start.x; const t = span ? Math.max(0, Math.min(1, (x - start.x) / span)) : fallbackT;
@@ -1435,6 +1510,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         });
         return best || { point: rawPoint, distance: Infinity, snap: null };
       }
+      function syncConnectionSelection() {
+        const last = connectionSelection[connectionSelection.length - 1] || null;
+        selectedConnectionKey = last ? last.key : null;
+        selectedConnectionPart = last ? { type: last.type, index: last.index } : null;
+      }
+      function setConnectionSelection(key, type, index, additive = false) {
+        const entry = { key, type, index: Number(index) };
+        if (!additive) connectionSelection = [entry];
+        else {
+          const at = connectionSelection.findIndex(item => item.key === entry.key && item.type === entry.type && item.index === entry.index);
+          if (at >= 0) connectionSelection.splice(at, 1); else connectionSelection.push(entry);
+        }
+        syncConnectionSelection();
+      }
+      function clearConnectionSelection() { connectionSelection = []; syncConnectionSelection(); }
+      const isSelectedPart = (key, type, index) => connectionSelection.some(item => item.key === key && item.type === type && item.index === index);
+      const selectedKeys = () => [...new Set(connectionSelection.map(item => item.key))];
+      function purgeLeaderRoutes(id) {
+        if (!id || !data.lineRoutes) return;
+        [`connector:${id}`, `side:${id}`, `leader:${id}`, `center:${id}`, `owner:${id}`].forEach(key => { delete data.lineRoutes[key]; });
+        Object.keys(data.lineRoutes).forEach(key => {
+          const route = data.lineRoutes[key];
+          if (route?.startSnap?.personId === id || route?.endSnap?.personId === id) delete data.lineRoutes[key];
+        });
+      }
+      function syncLineColorPalette(color) {
+        const value = String(color || "").toLowerCase();
+        $$("#lineColorPalette .color-swatch").forEach(swatch => {
+          swatch.classList.toggle("is-active", String(swatch.dataset.lineColor || "").toLowerCase() === value);
+        });
+      }
       function segmentStyleFor(key, index) {
         const style = data.lineRoutes[key]?.segmentStyles?.[index] || {};
         const width = [1, 2, 3, 4, 6].includes(Number(style.width)) ? Number(style.width) : 2;
@@ -1453,13 +1559,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const layout = connectionLayouts.get(selectedConnectionKey);
           if (layout) canDeletePoint = connectionRoute(layout).points.length > 1;
         }
-        pointButton.disabled = !lineEditMode || !canDeletePoint;
-        segmentButton.disabled = !lineEditMode || !(selectedConnectionPart?.type === "segment" && selectedConnectionKey);
-        const controls = $("#lineStyleControls"); const editingSegment = lineEditMode && selectedConnectionPart?.type === "segment" && selectedConnectionKey;
-        controls.hidden = !editingSegment;
-        if (editingSegment) {
-          const style = segmentStyleFor(selectedConnectionKey, selectedConnectionPart.index);
+        pointButton.disabled = !lineEditMode || !connectionSelection.some(item => item.type === "point");
+        segmentButton.disabled = !lineEditMode || !connectionSelection.some(item => item.type === "segment");
+        const controls = $("#lineStyleControls"); const editingLine = Boolean(lineEditMode && connectionSelection.length);
+        controls.hidden = !editingLine;
+
+        if (editingLine) {
+          const index = selectedConnectionPart?.type === "segment" ? selectedConnectionPart.index : 0;
+          const style = segmentStyleFor(selectedConnectionKey, index);
           $("#lineWidthField").value = String(style.width); $("#lineColorField").value = style.color; $("#lineDashField").value = style.dash;
+          syncLineColorPalette(style.color);
+          const scope = $("#lineScopeField"); if (scope) scope.disabled = selectedConnectionPart?.type !== "segment";
         }
       }
       function drawConnections() {
@@ -1471,8 +1581,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         buildGroupLineSnapTargets(canvas, canvasRect, scale);
         const cards = $$('[data-executive-id]', canvas); const layouts = [];
         const centerPeople = data.executives.filter(person => person.placement === "center");
-        centerPeople.slice(1).forEach((person, index) => {
-          const parent = cards.find(card => card.dataset.executiveId === centerPeople[index].id); const child = cards.find(card => card.dataset.executiveId === person.id);
+        centerPeople.forEach(person => {
+          const parentId = centerParentMap.get(person.id) || null; if (!parentId) return;
+          const parent = cards.find(card => card.dataset.executiveId === parentId); const child = cards.find(card => card.dataset.executiveId === person.id);
           if (!parent || !child) return;
           const sourceRect = canvasRectFor(parent, canvasRect, scale); const targetRect = canvasRectFor(child, canvasRect, scale);
           layouts.push({ key: `center:${person.id}`, kind: "owner", autoStart: { x: sourceRect.cx, y: sourceRect.bottom }, autoEnd: { x: targetRect.cx, y: targetRect.top } });
@@ -1541,6 +1652,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           layouts.push(subgroupLineLayout);
         });
         connectionLayouts = new Map(layouts.map(layout => [layout.key, layout]));
+        data.executives.filter(person => (person.placement === "left" || person.placement === "right") && person.anchorId).forEach(person => {
+          const card = cards.find(item => item.dataset.executiveId === person.id);
+          const anchorCard = cards.find(item => item.dataset.executiveId === person.anchorId);
+          if (!card || !anchorCard) return;
+          const cardRect = canvasRectFor(card, canvasRect, scale); const anchorRect = canvasRectFor(anchorCard, canvasRect, scale);
+          const onRight = person.placement === "right";
+          const start = { x: onRight ? anchorRect.right : anchorRect.left, y: anchorRect.cy };
+          const end = { x: onRight ? cardRect.left : cardRect.right, y: cardRect.cy };
+          const layout = { key: `side:${person.id}`, kind: "direct", autoStart: start, autoEnd: end };
+          layouts.push(layout); connectionLayouts.set(layout.key, layout);
+        });
+        data.executives.filter(person => (person.placement === "connector-left" || person.placement === "connector-right") && person.anchorId).forEach(person => {
+          const card = cards.find(item => item.dataset.executiveId === person.id);
+          const childCard = cards.find(item => item.dataset.executiveId === person.anchorId);
+          if (!card || !childCard) return;
+          const cardRect = canvasRectFor(card, canvasRect, scale);
+          const centerLayout = connectionLayouts.get(`center:${person.anchorId}`);
+          let spine = null;
+          if (centerLayout) spine = pointOnRouteAtY(connectionRoute(centerLayout), cardRect.cy);
+          if (!spine) { const childRect = canvasRectFor(childCard, canvasRect, scale); spine = { x: childRect.cx, y: cardRect.cy }; }
+          const attach = person.placement === "connector-right" ? { x: cardRect.left, y: cardRect.cy } : { x: cardRect.right, y: cardRect.cy };
+          const layout = { key: `connector:${person.id}`, kind: "direct", autoStart: { x: spine.x, y: spine.y }, autoEnd: attach };
+          layouts.push(layout); connectionLayouts.set(layout.key, layout);
+        });
         (data.customLines || []).forEach(line => {
           const start = resolveDrawAnchor(line.start) || line.start?.point || { x: 0, y: 0 };
           const end = resolveDrawAnchor(line.end) || line.end?.point || { x: 0, y: 0 };
@@ -1551,17 +1686,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const route = connectionRoute(layout); const start = route.points[0]; const end = route.points[route.points.length - 1];
           return { type: "group-line", groupKey: layout.snapGroupKey, start, end, center: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
         });
-        if (selectedConnectionKey && !connectionLayouts.has(selectedConnectionKey)) { selectedConnectionKey = null; selectedConnectionPart = null; }
+        connectionSelection = connectionSelection.filter(item => connectionLayouts.has(item.key)); syncConnectionSelection();
         if (selectedConnectionKey) {
           const selectedIndex = layouts.findIndex(layout => layout.key === selectedConnectionKey);
           if (selectedIndex >= 0) layouts.push(layouts.splice(selectedIndex, 1)[0]);
         }
         const paths = layouts.map(layout => {
-          const route = connectionRoute(layout); const selected = lineEditMode && selectedConnectionKey === layout.key;
+          const route = connectionRoute(layout); const selected = lineEditMode && selectedKeys().includes(layout.key);
           const ownerDropId = layout.key.startsWith("owner:") ? layout.key.slice("owner:".length) : "";
           const segments = route.points.slice(0, -1).map((point, index) => {
             if (route.deletedSegments.has(index)) return "";
-            const next = route.points[index + 1]; const selectedSegment = selected && selectedConnectionPart?.type === "segment" && selectedConnectionPart.index === index;
+            const next = route.points[index + 1]; const selectedSegment = lineEditMode && isSelectedPart(layout.key, "segment", index);
             const style = segmentStyleFor(layout.key, index);
             return `<line class="connection-path leader-drop-path${ownerDropId ? " owner-drop-path" : ""}${selected ? " is-selected-path" : ""}" data-connection-key="${esc(layout.key)}" data-leader-line-drop="${esc(layout.key)}" data-segment-index="${index}"${ownerDropId ? ` data-owner-drop="${esc(ownerDropId)}"` : ""} x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}"></line><line class="connection-segment${selectedSegment ? " is-selected" : ""}" data-connection-key="${esc(layout.key)}" data-segment-index="${index}" x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}" style="stroke:${style.color};stroke-width:${style.width};stroke-dasharray:${style.dashArray}"><title>세그먼트 선택 — 삭제 버튼 또는 Delete 키로 삭제</title></line>`;
           }).join("");
@@ -1569,7 +1704,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             const endpoint = index === 0 ? "start" : (index === route.points.length - 1 ? "end" : "point");
             const hiddenEndpoint = endpoint === "start" ? route.deletedSegments.has(0) : (endpoint === "end" ? route.deletedSegments.has(route.points.length - 2) : false);
             if (hiddenEndpoint) return "";
-            const selectedPoint = selectedConnectionPart?.type === "point" && selectedConnectionPart.index === index;
+            const selectedPoint = isSelectedPart(layout.key, "point", index);
             return `<circle class="connection-handle${selectedPoint ? " is-selected" : ""}${endpoint !== "point" ? " is-endpoint" : ""}" data-connection-handle="${endpoint}" data-point-index="${index}" data-connection-key="${esc(layout.key)}" cx="${point.x}" cy="${point.y}" r="${endpoint === "point" ? 7 : 9}"><title>${endpoint === "point" ? "접점" : "끝점"} — 드래그하여 이동</title></circle>`;
           }).join("") : "";
           const midpointHandles = selected ? route.points.slice(0, -1).map((point, index) => {
@@ -1590,7 +1725,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const visibleExecutiveIds = executiveIdsForView(visibleDepartmentIds);
         let centers = data.executives.filter(person => visibleExecutiveIds.has(person.id) && person.placement === "center");
         if (!centers.length && data.executives.length && activeViewMode === "all") { data.executives[0].placement = "center"; data.executives[0].anchorId = null; centers = [data.executives[0]]; }
-        const cards = centers.map((person, index) => `${renderLeaderLevel(person, visibleExecutiveIds)}${index < centers.length - 1 ? renderLeaderConnector(centers[index + 1].id, visibleExecutiveIds) : ""}`).join("");
+        const parentOf = buildCenterHierarchy(centers);
+        const renderLeaderNode = person => {
+          let html = renderLeaderLevel(person, visibleExecutiveIds);
+          const children = centerChildrenOf(person.id, centers, parentOf);
+          if (!children.length) return html;
+          if (children.length === 1) return `${html}${renderLeaderConnector(children[0].id, visibleExecutiveIds)}${renderLeaderNode(children[0])}`;
+          return `${html}<div class="leader-branch" data-leader-branch="${esc(person.id)}">${children.map(child => `<div class="leader-branch-item">${renderLeaderConnector(child.id, visibleExecutiveIds)}${renderLeaderNode(child)}</div>`).join("")}</div>`;
+        };
+        const roots = centerChildrenOf(null, centers, parentOf);
+        const cards = roots.map(person => renderLeaderNode(person)).join("");
         const freePeople = data.executives.filter(person => visibleExecutiveIds.has(person.id) && person.placement === "free");
         const freeCards = freePeople.map((person, index) => {
           const x = Number.isFinite(person.freeX) ? person.freeX : 1800 + index * 260;
@@ -1976,7 +2120,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!personEditBaseline || personEditBaseline.id !== person.id) personEditBaseline = personEditState(found);
         const editChanged = personEditChanged(found);
         const options = data.departments.map(department => `<option value="${esc(department.id)}" ${found.department && found.department.id === department.id ? "selected" : ""}>${esc(departmentLabel(department.id))}</option>`).join("");
-        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row"><div class="field"><label for="titleField">직위</label><input id="titleField" class="combo-input" type="text" list="titleOptions" value="${esc(person.title)}" placeholder="선택하거나 직접 입력"><datalist id="titleOptions">${optionListMarkup(fieldOptionValues("title"))}</datalist></div><div class="field"><label for="roleField">직책</label><input id="roleField" class="combo-input" type="text" list="roleOptions" value="${esc(person.role || "")}" placeholder="선택하거나 직접 입력"><datalist id="roleOptions">${optionListMarkup(fieldOptionValues("role"))}</datalist></div></div><div class="field-row"><div class="field"><label for="divisionField">사업본부</label><input id="divisionField" class="combo-input" type="text" list="divisionOptions" value="${esc(person.division || "")}" placeholder="선택하거나 직접 입력"><datalist id="divisionOptions">${optionListMarkup(fieldOptionValues("division"))}</datalist></div><div class="field"><label for="positionField">소속팀</label><input id="positionField" class="combo-input" type="text" list="positionOptions" value="${esc(person.position)}" placeholder="선택하거나 직접 입력"><datalist id="positionOptions">${optionListMarkup(fieldOptionValues("position"))}</datalist></div></div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="joinedField">입사일</label><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."></div>${found.department ? "" : leaderPlacementMarkup(person)}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn"${editChanged ? "" : " disabled"}>변경 저장</button><button class="btn btn-danger" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
+        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row">${comboFieldMarkup("titleField", "직위", "title", person.title)}${comboFieldMarkup("roleField", "직책", "role", person.role)}</div><div class="field-row">${comboFieldMarkup("divisionField", "사업본부", "division", person.division)}${comboFieldMarkup("positionField", "소속팀", "position", person.position)}</div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="joinedField">입사일</label><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."></div>${found.department ? "" : leaderPlacementMarkup(person)}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn"${editChanged ? "" : " disabled"}>변경 저장</button><button class="btn btn-danger" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
         bindInspectorFields();
       }
       function bindDepartmentFields() {
@@ -2080,12 +2224,38 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         saveData(false); drawConnections(); buildDrawAnchorCache(); renderDrawOverlay(); toast("연결선을 추가했습니다. 계속 그리거나 Esc로 종료하세요.");
       }
       const LEADER_PLACEMENTS = [["center", "중앙 계층"], ["left", "왼쪽 배치"], ["right", "오른쪽 배치"], ["connector-left", "계층 사이 왼쪽"], ["connector-right", "계층 사이 오른쪽"], ["free", "자유 배치"]];
+      let centerParentMap = new Map();
+      function buildCenterHierarchy(centers) {
+        const ids = new Set(centers.map(person => person.id));
+        const parentOf = new Map();
+        centers.forEach((person, index) => {
+          const explicit = person.reportsTo && person.reportsTo !== person.id && ids.has(person.reportsTo) ? person.reportsTo : null;
+          parentOf.set(person.id, explicit || (index > 0 ? centers[index - 1].id : null));
+        });
+        centers.forEach(person => {
+          const seen = new Set([person.id]); let cursor = parentOf.get(person.id);
+          while (cursor) {
+            if (seen.has(cursor)) { parentOf.set(person.id, null); break; }
+            seen.add(cursor); cursor = parentOf.get(cursor) || null;
+          }
+        });
+        centerParentMap = parentOf;
+        return parentOf;
+      }
+      function centerChildrenOf(parentId, centers, parentOf) {
+        return centers.filter(person => (parentOf.get(person.id) || null) === (parentId || null));
+      }
       function leaderParentId(person) {
         if (!person) return "";
+        const centers = data.executives.filter(item => item.placement === "center");
         if (person.placement === "center") {
-          const centers = data.executives.filter(item => item.placement === "center");
+          if (centerParentMap.has(person.id)) return centerParentMap.get(person.id) || "";
           const index = centers.findIndex(item => item.id === person.id);
           return index > 0 ? centers[index - 1].id : "";
+        }
+        if (person.placement === "connector-left" || person.placement === "connector-right") {
+          const childIndex = centers.findIndex(item => item.id === person.anchorId);
+          return childIndex > 0 ? centers[childIndex - 1].id : "";
         }
         return person.anchorId || "";
       }
@@ -2096,17 +2266,69 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const placementOptions = LEADER_PLACEMENTS.map(([value, label]) => `<option value="${value}" ${placement === value ? "selected" : ""}>${label}</option>`).join("");
         const parentId = leaderParentId(person);
         const parentOptions = `<option value="">최상위 (없음)</option>${data.executives.filter(item => item.id !== person.id).map(item => `<option value="${esc(item.id)}" ${parentId === item.id ? "selected" : ""}>${esc(`${item.name} ${item.title || item.role || ""}`.trim())}</option>`).join("")}`;
+        const isConnector = placement === "connector-left" || placement === "connector-right";
+        const childId = isConnector ? (person.anchorId || "") : "";
+        const connectorTargets = centers.slice(1).filter(item => item.id !== person.id);
+        const childOptions = `<option value="">연결 안 함</option>${connectorTargets.map(item => {
+          const index = centers.findIndex(entry => entry.id === item.id);
+          const upper = centers[index - 1];
+          return `<option value="${esc(item.id)}" ${childId === item.id ? "selected" : ""}>${esc(`${upper ? upper.name : "상위"} → ${item.name} 사이`)}</option>`;
+        }).join("")}`;
         const orderText = orderIndex >= 0 ? `${orderIndex + 1} / ${centers.length}단계` : "중앙 계층 아님";
-        return `<div class="field-group leader-layout"><div class="field-group-title">계층 배치</div><div class="field"><label for="leaderParentField">상위 담당자</label><select id="leaderParentField">${parentOptions}</select><span class="helper">선택한 사람 바로 아래 계층으로 이동합니다.</span></div><div class="field"><label for="leaderPlacementField">배치 위치</label><select id="leaderPlacementField">${placementOptions}</select><span class="helper">좌·우 배치와 계층 사이 배치를 고를 수 있습니다. 드래그로 옮겨도 이 값이 자동으로 바뀝니다.</span></div><div class="field"><label>계층 순서</label><div class="order-controls"><button class="btn btn-small" type="button" id="leaderUpBtn"${orderIndex > 0 ? "" : " disabled"}>↑ 위 계층</button><span class="order-state">${esc(orderText)}</span><button class="btn btn-small" type="button" id="leaderDownBtn"${orderIndex >= 0 && orderIndex < centers.length - 1 ? "" : " disabled"}>↓ 아래 계층</button></div></div></div>`;
+        return `<details class="field-group leader-layout" id="leaderLayoutGroup"${leaderLayoutOpen ? " open" : ""}><summary class="field-group-title">계층 배치</summary><div class="field"><label for="leaderParentField">상위 담당자</label><select id="leaderParentField">${parentOptions}</select><span class="helper">선택한 사람 바로 아래 계층으로 이동합니다.</span></div><div class="field"><label for="leaderChildField">하위 담당자 (계층 사이 연결)</label><select id="leaderChildField">${childOptions}</select><span class="helper">두 계층을 잇는 연결선에 이 구성원을 붙입니다.</span></div><div class="field"><label for="leaderPlacementField">배치 위치</label><select id="leaderPlacementField">${placementOptions}</select><span class="helper">좌·우 배치와 계층 사이 배치를 고를 수 있습니다. 드래그로 옮겨도 이 값이 자동으로 바뀝니다.</span></div><div class="field"><label>계층 순서</label><div class="order-controls"><button class="btn btn-small" type="button" id="leaderUpBtn"${orderIndex > 0 ? "" : " disabled"}>↑ 위 계층</button><span class="order-state">${esc(orderText)}</span><button class="btn btn-small" type="button" id="leaderDownBtn"${orderIndex >= 0 && orderIndex < centers.length - 1 ? "" : " disabled"}>↓ 아래 계층</button></div></div></details>${leaderPartMarkup(person)}`;
+      }
+      function leaderPartMarkup(person) {
+        const owned = data.departments.filter(item => !item.parentId && item.ownerId === person.id);
+        const available = data.departments.filter(item => !item.parentId && item.ownerId !== person.id);
+        const options = `<option value="">파트 선택…</option>${available.map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join("")}`;
+        const chips = owned.length
+          ? `<div class="part-chips">${owned.map(item => `<span class="part-chip">${esc(item.name)}<button type="button" data-leader-part-remove="${esc(item.id)}" aria-label="${esc(item.name)} 연결 해제">×</button></span>`).join("")}</div>`
+          : `<span class="helper">연결된 파트가 없습니다.</span>`;
+        return `<div class="field-group leader-parts"><div class="field-group-title">파트 선택</div><div class="field"><label for="leaderPartField">하위로 정렬할 파트</label><select id="leaderPartField">${options}</select><span class="helper">선택한 파트를 이 구성원 하위로 정렬합니다.</span>${chips}</div></div>`;
+      }
+      function attachPartToLeader(leaderId, departmentId) {
+        const department = getDepartment(departmentId); const leader = data.executives.find(item => item.id === leaderId);
+        if (!department || !leader) return;
+        department.parentId = null; setDepartmentOwner(department.id, leader.id);
+        Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("owner:") || key.startsWith("group:") || key.startsWith("groupdrop:")).forEach(key => delete data.lineRoutes[key]);
+        saveData(false); render(); renderInspector(); toast(`${department.name}을(를) ${leader.name}님 하위로 정렬했습니다.`);
+      }
+      function detachPartFromLeader(departmentId) {
+        const department = getDepartment(departmentId); if (!department) return;
+        setDepartmentOwner(department.id, null);
+        Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("owner:") || key.startsWith("group:") || key.startsWith("groupdrop:")).forEach(key => delete data.lineRoutes[key]);
+        saveData(false); render(); renderInspector(); toast(`${department.name}의 상위 연결을 해제했습니다.`);
+      }
+      function setLeaderConnectorTarget(sourceId, childId) {
+        const source = data.executives.find(item => item.id === sourceId); if (!source) return;
+        if (!childId) {
+          if (source.placement === "connector-left" || source.placement === "connector-right") {
+            const parentId = source.anchorId ? leaderParentId(data.executives.find(item => item.id === source.anchorId)) : "";
+            source.placement = "right"; source.anchorId = parentId || (data.executives.find(item => item.placement === "center" && item.id !== sourceId)?.id || null);
+          }
+          saveData(false); render(); renderInspector(); toast("계층 사이 연결을 해제했습니다."); return;
+        }
+        if (childId === sourceId) return;
+        const centers = data.executives.filter(item => item.placement === "center");
+        if (source.placement === "center" && centers.length <= 1) return toast("중앙 계층에는 한 명 이상이 필요합니다.");
+        const side = source.placement === "connector-left" || source.placement === "left" ? "connector-left" : "connector-right";
+        source.placement = side; source.anchorId = childId;
+        delete source.freeX; delete source.freeY;
+        Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:") || key === `leader:${sourceId}`).forEach(key => delete data.lineRoutes[key]);
+        purgeLeaderRoutes(sourceId);
+        saveData(false); render(); renderInspector();
+        const child = data.executives.find(item => item.id === childId);
+        toast(`${source.name}님을 ${child ? child.name : ""} 위 연결선에 배치했습니다.`);
       }
       function setLeaderParent(sourceId, parentId) {
         const source = data.executives.find(item => item.id === sourceId); if (!source) return;
         if (!parentId) {
           const sourceIndex = data.executives.findIndex(item => item.id === sourceId);
           const [moving] = data.executives.splice(sourceIndex, 1);
-          moving.placement = "center"; moving.anchorId = null; delete moving.freeX; delete moving.freeY;
+          moving.placement = "center"; moving.anchorId = null; moving.reportsTo = null; delete moving.freeX; delete moving.freeY;
           data.executives.unshift(moving);
           Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:") || key === `leader:${sourceId}`).forEach(key => delete data.lineRoutes[key]);
+        purgeLeaderRoutes(sourceId);
           saveData(false); render(); renderInspector(); toast(`${moving.name}님을 최상위 계층으로 올렸습니다.`); return;
         }
         if (parentId === sourceId) return;
@@ -2114,12 +2336,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         while (cursor) { if (cursor === sourceId) return toast("순환 연결은 만들 수 없습니다."); cursor = leaderParentId(data.executives.find(item => item.id === cursor)); }
         const parent = data.executives.find(item => item.id === parentId); if (!parent) return;
         if (source.placement === "center") {
+          source.anchorId = null; source.reportsTo = parentId;
           const sourceIndex = data.executives.findIndex(item => item.id === sourceId);
           const [moving] = data.executives.splice(sourceIndex, 1);
-          moving.anchorId = null;
-          const parentIndex = data.executives.findIndex(item => item.id === parentId);
-          data.executives.splice(parentIndex + 1, 0, moving);
+          const siblings = data.executives.filter(item => item.placement === "center" && item.reportsTo === parentId);
+          const lastSibling = siblings.length ? siblings[siblings.length - 1].id : parentId;
+          const insertIndex = data.executives.findIndex(item => item.id === lastSibling);
+          data.executives.splice(insertIndex >= 0 ? insertIndex + 1 : data.executives.length, 0, moving);
           Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:")).forEach(key => delete data.lineRoutes[key]);
+        purgeLeaderRoutes(sourceId);
+        } else if (source.placement === "connector-left" || source.placement === "connector-right") {
+          const centers = data.executives.filter(item => item.placement === "center");
+          const parentIndex = centers.findIndex(item => item.id === parentId);
+          const child = parentIndex >= 0 ? centers[parentIndex + 1] : null;
+          if (!child) return toast(`${parent.name}님 아래에는 연결선이 없습니다. 다른 상위 담당자를 선택해 주세요.`);
+          source.anchorId = child.id;
         } else source.anchorId = parentId;
         saveData(false); render(); renderInspector(); toast(`${source.name}님을 ${parent.name}님 아래 계층으로 설정했습니다.`);
       }
@@ -2134,6 +2365,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           moving.placement = "center"; moving.anchorId = null; delete moving.freeX; delete moving.freeY;
           const parentIndex = parentId ? data.executives.findIndex(item => item.id === parentId) : -1;
           data.executives.splice(parentIndex >= 0 ? parentIndex + 1 : 0, 0, moving);
+        } else if (placement === "connector-left" || placement === "connector-right") {
+          const existing = (source.placement === "connector-left" || source.placement === "connector-right") ? source.anchorId : null;
+          const fallbackChild = centers.find(item => item.id !== sourceId && centers.indexOf(item) > 0)?.id || centers.slice(1).find(item => item.id !== sourceId)?.id || null;
+          const childId = existing || fallbackChild;
+          if (!childId) return toast("계층 사이에 배치할 연결선이 없습니다.");
+          source.placement = placement; source.anchorId = childId;
+          delete source.freeX; delete source.freeY;
         } else {
           if (!parentId) return toast("먼저 상위 담당자를 선택해 주세요.");
           source.placement = placement; source.anchorId = parentId;
@@ -2141,6 +2379,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
         if (data.centerOffsets) delete data.centerOffsets[sourceId];
         Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:") || key === `leader:${sourceId}`).forEach(key => delete data.lineRoutes[key]);
+        purgeLeaderRoutes(sourceId);
         saveData(false); render(); renderInspector();
         toast(`배치를 '${(LEADER_PLACEMENTS.find(item => item[0] === placement) || [])[1] || placement}'(으)로 변경했습니다.`);
       }
@@ -2154,6 +2393,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const targetArrayIndex = data.executives.findIndex(item => item.id === centers[targetIndex].id);
         data.executives.splice(direction < 0 ? targetArrayIndex : targetArrayIndex + 1, 0, moving);
         Object.keys(data.lineRoutes || {}).filter(key => key.startsWith("center:")).forEach(key => delete data.lineRoutes[key]);
+        purgeLeaderRoutes(sourceId);
         saveData(false); render(); renderInspector(); toast(`${moving.name}님의 계층 순서를 변경했습니다.`);
       }
       function fieldOptionValues(key) {
@@ -2167,6 +2407,53 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       function optionListMarkup(values) {
         return values.map(value => `<option value="${esc(value)}"></option>`).join("");
+      }
+      function comboFieldMarkup(id, label, key, value, placeholder = "선택하거나 직접 입력") {
+        const values = fieldOptionValues(key);
+        const current = String(value || "");
+        const options = values.map(item => `<button class="combo-option${item === current ? " is-current" : ""}" type="button" role="option" aria-selected="${item === current}" data-combo-value="${esc(item)}">${esc(item)}</button>`).join("") || `<div class="combo-empty">선택 가능한 항목이 없습니다. 직접 입력하세요.</div>`;
+        return `<div class="field"><label for="${id}">${esc(label)}</label><div class="combo" data-combo-for="${id}"><input id="${id}" class="combo-input" type="text" value="${esc(current)}" placeholder="${esc(placeholder)}" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="${id}List"><button class="combo-toggle" type="button" tabindex="-1" aria-label="${esc(label)} 목록 열기">⌄</button><div class="combo-list" id="${id}List" role="listbox" hidden>${options}</div></div></div>`;
+      }
+      function bindComboFields() {
+        $$(".combo", $("#inspector")).forEach(combo => {
+          const input = combo.querySelector(".combo-input");
+          const list = combo.querySelector(".combo-list");
+          const toggle = combo.querySelector(".combo-toggle");
+          if (!input || !list) return;
+          const options = [...list.querySelectorAll(".combo-option")];
+          const filter = () => {
+            const query = input.value.trim().toLowerCase();
+            let visible = 0;
+            options.forEach(option => {
+              const match = !query || option.dataset.comboValue.toLowerCase().includes(query);
+              option.hidden = !match; if (match) visible += 1;
+            });
+            const empty = list.querySelector(".combo-empty");
+            if (empty) empty.hidden = visible > 0;
+          };
+          const showAll = () => {
+            options.forEach(option => { option.hidden = false; });
+            const empty = list.querySelector(".combo-empty"); if (empty) empty.hidden = options.length > 0;
+          };
+          const open = () => {
+            showAll(); list.hidden = false; input.setAttribute("aria-expanded", "true"); combo.classList.add("is-open");
+            const current = options.find(option => option.dataset.comboValue === input.value.trim());
+            if (current) current.scrollIntoView({ block: "nearest" });
+          };
+          const close = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); combo.classList.remove("is-open"); };
+          toggle?.addEventListener("mousedown", event => { event.preventDefault(); if (list.hidden) { input.focus(); open(); } else close(); });
+          input.addEventListener("focus", open);
+          input.addEventListener("input", filter);
+          input.addEventListener("keydown", event => { if (event.key === "Escape") { close(); event.stopPropagation(); } });
+          input.addEventListener("blur", () => window.setTimeout(close, 120));
+          options.forEach(option => option.addEventListener("mousedown", event => {
+            event.preventDefault();
+            input.value = option.dataset.comboValue;
+            options.forEach(item => { const current = item === option; item.classList.toggle("is-current", current); item.setAttribute("aria-selected", String(current)); });
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            close();
+          }));
+        });
       }
       function bindInspectorFields() {
         const fields = { nameField: "name", titleField: "title", roleField: "role", positionField: "position", divisionField: "division", joinedField: "joined", noteField: "note" };
@@ -2185,7 +2472,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (role) data.hiddenRanks = data.hiddenRanks.filter(item => item !== role);
           saveData(); personEditBaseline = personEditState(getPerson(selectedId)); render(); renderInspector();
         });
+        $("#leaderLayoutGroup")?.addEventListener("toggle", event => { leaderLayoutOpen = event.target.open; });
         $("#leaderParentField")?.addEventListener("change", event => setLeaderParent(selectedId, event.target.value));
+        bindComboFields();
+        $("#leaderChildField")?.addEventListener("change", event => setLeaderConnectorTarget(selectedId, event.target.value));
+        $("#leaderPartField")?.addEventListener("change", event => { const value = event.target.value; event.target.value = ""; if (value) attachPartToLeader(selectedId, value); });
+        $$("[data-leader-part-remove]", $("#inspector")).forEach(button => button.addEventListener("click", () => detachPartFromLeader(button.dataset.leaderPartRemove)));
         $("#leaderPlacementField")?.addEventListener("change", event => setLeaderPlacement(selectedId, event.target.value));
         $("#leaderUpBtn")?.addEventListener("click", () => moveLeaderOrder(selectedId, -1));
         $("#leaderDownBtn")?.addEventListener("click", () => moveLeaderOrder(selectedId, 1));
@@ -2379,7 +2671,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
         const snap = leaderAlignmentAt(event, sourceId);
         const target = { x: snap ? snap.x : (event.clientX - treeRect.left) / scale, y: snap ? snap.y : (event.clientY - treeRect.top) / scale };
-        if (source.placement === "center") {
+        if (source.placement !== "free") {
           const node = $(`[data-leader-center="${CSS.escape(sourceId)}"]`); if (!node) return;
           const rect = node.getBoundingClientRect();
           const now = { x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: (rect.top + rect.height / 2 - treeRect.top) / scale };
@@ -2887,6 +3179,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           button.setAttribute("aria-expanded", String(willOpen));
           if (willOpen) dropdownMenus.forEach(menu => menu.removeAttribute("open"));
         });
+        panel.addEventListener("click", event => {
+          const item = event.target.closest("button");
+          if (!item || item.disabled) return;
+          if (item.closest(".line-style-controls, .line-edit-group")) return;
+          if (item.id === "drawLineBtn" || item.id === "lineEditBtn") return;
+          window.setTimeout(() => {
+            panel.hidden = true;
+            button.setAttribute("aria-expanded", "false");
+          }, 0);
+        });
+      });
+      document.addEventListener("pointerdown", event => {
+        commandMenus.forEach(({ button, panel }) => {
+          if (panel.hidden) return;
+          if (panel.contains(event.target) || button.contains(event.target)) return;
+          if (panel.id === "editMenuPanel" && (lineEditMode || lineDrawMode)) return;
+          panel.hidden = true;
+          button.setAttribute("aria-expanded", "false");
+        });
       });
       dropdownMenus.forEach(menu => {
         menu.addEventListener("click", event => {
@@ -2904,6 +3215,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       });
       document.addEventListener("keydown", event => {
         if (event.key !== "Escape") return;
+        closeCommandMenus();
         dropdownMenus.forEach(menu => {
           if (!menu.open) return;
           menu.removeAttribute("open");
@@ -2999,7 +3311,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }, true);
       $("#orgCanvas").addEventListener("click", event => { if (lineDrawMode) { event.preventDefault(); event.stopPropagation(); } }, true);
       $("#lineEditBtn").addEventListener("click", event => {
-        lineEditMode = !lineEditMode; selectedConnectionKey = null; selectedConnectionPart = null; connectionDrag = null; activeSnapPoint = null;
+        lineEditMode = !lineEditMode; clearConnectionSelection(); connectionDrag = null; activeSnapPoint = null;
         if (lineEditMode && lineDrawMode) { lineDrawMode = false; drawStartAnchor = null; drawHoverAnchor = null; renderDrawOverlay(); const drawButton = $("#drawLineBtn"); if (drawButton) { drawButton.setAttribute("aria-pressed", "false"); drawButton.textContent = "연결선 그리기"; } $("#orgCanvas").classList.remove("line-drawing"); }
         const canvas = $("#orgCanvas"); canvas.classList.toggle("line-editing", lineEditMode);
         event.currentTarget.setAttribute("aria-pressed", String(lineEditMode));
@@ -3011,7 +3323,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       connectionLayer.addEventListener("click", event => {
         if (!lineEditMode || event.target.classList.contains("connection-handle")) return;
         const path = event.target.closest(".connection-path, .connection-segment"); if (!path) return;
-        event.preventDefault(); event.stopPropagation(); selectedConnectionKey = path.dataset.connectionKey; selectedConnectionPart = { type: "segment", index: Number(path.dataset.segmentIndex) }; drawConnections();
+        event.preventDefault(); event.stopPropagation(); setConnectionSelection(path.dataset.connectionKey, "segment", Number(path.dataset.segmentIndex), event.shiftKey); drawConnections();
       });
       connectionLayer.addEventListener("dblclick", event => {
         if (!lineEditMode) return;
@@ -3029,16 +3341,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const current = connectionRoute(layout); const first = current.points[segmentIndex]; const second = current.points[segmentIndex + 1]; if (!first || !second) return;
           const center = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 }; const saved = data.lineRoutes[key] ||= {};
           saved.waypoints = current.waypoints.map(item => ({ ...item })); saved.waypoints.splice(segmentIndex, 0, center); delete saved.bendOffset;
-          selectedConnectionKey = key; selectedConnectionPart = { type: "point", index: segmentIndex + 1 };
+          setConnectionSelection(key, "point", segmentIndex + 1, false);
           connectionDrag = { id: event.pointerId, key, mode: "point", pointIndex: segmentIndex + 1 }; activeSnapPoint = center; drawConnections(); return;
         }
         if (handle) {
-          const key = handle.dataset.connectionKey; const pointIndex = Number(handle.dataset.pointIndex); selectedConnectionKey = key; selectedConnectionPart = { type: "point", index: pointIndex };
+          const key = handle.dataset.connectionKey; const pointIndex = Number(handle.dataset.pointIndex); setConnectionSelection(key, "point", pointIndex, event.shiftKey);
+          if (event.shiftKey) { drawConnections(); return; }
           connectionDrag = { id: event.pointerId, key, mode: "point", pointIndex }; drawConnections(); return;
         }
         const key = path.dataset.connectionKey; const segmentIndex = Number(path.dataset.segmentIndex); const layout = connectionLayouts.get(key); if (!layout) return;
         const canvas = $("#orgCanvas"); const rect = canvas.getBoundingClientRect(); const scale = viewport.scale || 1;
-        selectedConnectionKey = key; selectedConnectionPart = { type: "segment", index: segmentIndex };
+        setConnectionSelection(key, "segment", segmentIndex, event.shiftKey);
+        if (event.shiftKey) { drawConnections(); return; }
         connectionDrag = { id: event.pointerId, key, mode: "segment", segmentIndex, origin: { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale }, points: connectionRoute(layout).points.map(point => ({ ...point })) };
         drawConnections();
       });
@@ -3100,36 +3414,48 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       };
       window.addEventListener("pointerup", endConnectionDrag); window.addEventListener("pointercancel", endConnectionDrag);
       function deleteSelectedPoint() {
-        if (!selectedConnectionKey || selectedConnectionPart?.type !== "point") return;
-        const layout = connectionLayouts.get(selectedConnectionKey); if (!layout) return;
-        const current = connectionRoute(layout); const index = selectedConnectionPart.index;
-        const saved = data.lineRoutes[selectedConnectionKey] ||= {};
-        if (index === 0 || index === current.points.length - 1) {
+        const targets = connectionSelection.filter(item => item.type === "point");
+        if (!targets.length) return;
+        const byKey = new Map();
+        targets.forEach(item => { if (!byKey.has(item.key)) byKey.set(item.key, []); byKey.get(item.key).push(item.index); });
+        let removed = 0;
+        byKey.forEach((indexes, key) => {
+          const layout = connectionLayouts.get(key); if (!layout) return;
+          const route = connectionRoute(layout); const saved = data.lineRoutes[key] ||= {};
+          const lastIndex = route.points.length - 1;
           const deleted = new Set(Array.isArray(saved.deletedSegments) ? saved.deletedSegments.map(Number) : []);
-          deleted.add(index === 0 ? 0 : current.points.length - 2); saved.deletedSegments = [...deleted].sort((a, b) => a - b);
-          selectedConnectionPart = null; saveData(false); drawConnections(); toast("선택한 끝점과 연결 세그먼트를 삭제했습니다."); return;
-        }
-        saved.waypoints = current.waypoints.map(item => ({ ...item }));
-        saved.waypoints.splice(index - 1, 1); saved.deletedSegments = []; delete saved.bendOffset;
-        selectedConnectionPart = null; saveData(false); drawConnections(); toast("선택한 접점을 삭제했습니다.");
+          const waypoints = route.waypoints.map(point => ({ ...point }));
+          const interior = [...new Set(indexes.filter(index => index > 0 && index < lastIndex))].sort((a, b) => b - a);
+          interior.forEach(index => { waypoints.splice(index - 1, 1); removed += 1; });
+          if (indexes.includes(0)) { deleted.add(0); removed += 1; }
+          if (indexes.includes(lastIndex)) { deleted.add(lastIndex - 1); removed += 1; }
+          if (interior.length) { saved.waypoints = waypoints; delete saved.bendOffset; }
+          saved.deletedSegments = [...deleted].sort((a, b) => a - b);
+        });
+        clearConnectionSelection(); saveData(false); drawConnections();
+        toast(`선택한 접점 ${removed}개를 삭제했습니다.`);
       }
       function deleteSelectedSegment() {
-        if (!selectedConnectionKey || selectedConnectionPart?.type !== "segment") return;
-        if (selectedConnectionKey.startsWith("custom:")) {
-          const layout = connectionLayouts.get(selectedConnectionKey);
-          const route = layout ? connectionRoute(layout) : null;
-          const remaining = route ? route.points.length - 1 - route.deletedSegments.size : 0;
-          if (remaining <= 1) {
-            const id = selectedConnectionKey.slice("custom:".length);
-            data.customLines = (data.customLines || []).filter(item => item.id !== id);
-            delete data.lineRoutes[selectedConnectionKey];
-            selectedConnectionKey = null; selectedConnectionPart = null;
-            saveData(false); drawConnections(); toast("그린 연결선을 삭제했습니다."); return;
+        const targets = connectionSelection.filter(item => item.type === "segment");
+        if (!targets.length) return;
+        let removedLines = 0; let removedSegments = 0;
+        const byKey = new Map();
+        targets.forEach(item => { if (!byKey.has(item.key)) byKey.set(item.key, []); byKey.get(item.key).push(item.index); });
+        byKey.forEach((indexes, key) => {
+          const layout = connectionLayouts.get(key); if (!layout) return;
+          const route = connectionRoute(layout);
+          const deleted = new Set([...route.deletedSegments, ...indexes]);
+          const total = route.points.length - 1;
+          if (key.startsWith("custom:") && total - deleted.size <= 0) {
+            data.customLines = (data.customLines || []).filter(item => item.id !== key.slice("custom:".length));
+            delete data.lineRoutes[key]; removedLines += 1; return;
           }
-        }
-        const saved = data.lineRoutes[selectedConnectionKey] ||= {}; const deleted = new Set(Array.isArray(saved.deletedSegments) ? saved.deletedSegments.map(Number) : []);
-        deleted.add(selectedConnectionPart.index); saved.deletedSegments = [...deleted].sort((a, b) => a - b);
-        selectedConnectionPart = null; saveData(false); drawConnections(); toast("선택한 세그먼트를 삭제했습니다. 선을 두 번 누르면 전체가 복원됩니다.");
+          const saved = data.lineRoutes[key] ||= {};
+          saved.deletedSegments = [...deleted].sort((a, b) => a - b);
+          removedSegments += indexes.length;
+        });
+        clearConnectionSelection(); saveData(false); drawConnections();
+        toast(removedLines ? `그린 연결선 ${removedLines}개를 삭제했습니다.` : `선택한 세그먼트 ${removedSegments}개를 삭제했습니다. 선을 두 번 누르면 전체가 복원됩니다.`);
       }
       function restoreDeletedSegments() {
         let restored = 0;
@@ -3197,14 +3523,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       $("#straightenLineBtn").addEventListener("click", alignConnectionsStraight);
       function applySelectedSegmentStyle() {
-        if (!selectedConnectionKey || selectedConnectionPart?.type !== "segment") return;
-        const saved = data.lineRoutes[selectedConnectionKey] ||= {}; saved.segmentStyles ||= {};
-        saved.segmentStyles[selectedConnectionPart.index] = { width: Number($("#lineWidthField").value) || 2, color: $("#lineColorField").value, dash: $("#lineDashField").value };
+        if (!connectionSelection.length) return;
+        const style = { width: Number($("#lineWidthField").value) || 2, color: $("#lineColorField").value, dash: $("#lineDashField").value };
+        const wholeLine = $("#lineScopeField")?.value !== "segment";
+        const byKey = new Map();
+        connectionSelection.forEach(item => { if (!byKey.has(item.key)) byKey.set(item.key, []); byKey.get(item.key).push(item); });
+        byKey.forEach((items, key) => {
+          const layout = connectionLayouts.get(key); if (!layout) return;
+          const saved = data.lineRoutes[key] ||= {}; saved.segmentStyles ||= {};
+          if (wholeLine) {
+            const count = Math.max(1, connectionRoute(layout).points.length - 1);
+            for (let index = 0; index < count; index += 1) saved.segmentStyles[index] = { ...style };
+          } else items.filter(item => item.type === "segment").forEach(item => { saved.segmentStyles[item.index] = { ...style }; });
+        });
         saveData(false); drawConnections();
       }
       $("#lineWidthField").addEventListener("change", applySelectedSegmentStyle);
-      $("#lineColorField").addEventListener("input", applySelectedSegmentStyle);
+      $("#lineColorField").addEventListener("input", event => { syncLineColorPalette(event.target.value); applySelectedSegmentStyle(); });
+      $("#lineColorPalette").addEventListener("click", event => {
+        const swatch = event.target.closest(".color-swatch"); if (!swatch) return;
+        const color = swatch.dataset.lineColor; if (!color) return;
+        $("#lineColorField").value = color; syncLineColorPalette(color); applySelectedSegmentStyle();
+      });
       $("#lineDashField").addEventListener("change", applySelectedSegmentStyle);
+      $("#lineScopeField")?.addEventListener("change", applySelectedSegmentStyle);
       window.addEventListener("keydown", event => {
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "z") {
           event.preventDefault(); event.shiftKey ? redoChange() : undoChange(); return;
@@ -3214,7 +3556,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         }
         if (event.key === "Escape" && lineDrawMode) { event.preventDefault(); if (drawStartAnchor) { drawStartAnchor = null; drawHoverAnchor = null; renderDrawOverlay(); toast("시작점 지정을 취소했습니다."); } else setLineDrawMode(false); return; }
         if (!lineEditMode || (event.key !== "Delete" && event.key !== "Backspace") || event.target.matches("input, textarea")) return;
-        event.preventDefault(); selectedConnectionPart?.type === "point" ? deleteSelectedPoint() : deleteSelectedSegment();
+        event.preventDefault();
+        if (connectionSelection.some(item => item.type === "point")) deleteSelectedPoint();
+        if (connectionSelection.some(item => item.type === "segment")) deleteSelectedSegment();
       });
       function updateGroupPosition(key, offset) {
         data.groupOffsets[key] = { x: offset.x, y: offset.y };
@@ -3353,7 +3697,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           if (leaderHandle) event.preventDefault();
           event.stopPropagation();
           const id = leaderHandle?.dataset.leaderMove || leaderCard?.dataset.leaderMoveCard; const person = data.executives.find(item => item.id === id);
-          const centerNode = leaderTrigger.closest(".leader-center"); const freeNode = leaderTrigger.closest(".free-leader");
+          const centerNode = leaderTrigger.closest(".leader-center, .leader-side-item"); const freeNode = leaderTrigger.closest(".free-leader");
           const node = centerNode || freeNode;
           if (!person || !node) return;
           const offset = data.centerOffsets?.[id] || {}; const cardNode = $(`[data-executive-id="${CSS.escape(id)}"]`, node);
