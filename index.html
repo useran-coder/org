@@ -185,6 +185,9 @@
     .draw-preview { stroke: var(--teal); stroke-width: 2; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; pointer-events: none; }
     .draw-anchor { fill: rgba(22, 138, 118, .16); stroke: var(--teal); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
     .draw-anchor.is-start { fill: var(--teal); stroke: #fff; }
+    .joined-row { display: flex; align-items: center; gap: 6px; }
+    .joined-row input { flex: 1; min-width: 0; }
+    .tenure-badge { flex: none; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
     .combo { position: relative; }
     .combo .combo-input { width: 100%; box-sizing: border-box; padding-right: 30px; background-image: none; }
     .combo-toggle { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer; }
@@ -220,6 +223,13 @@
     .part-chip button:hover { background: #ffe9ea; color: #c51d27; }
     .order-controls { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px; }
     .order-state { color: var(--muted); font-size: 11px; text-align: center; white-space: nowrap; }
+    .stat-person-card { display: grid; gap: 5px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .stat-person-card.is-concurrent { border-color: #e2c79b; background: #fffaf0; }
+    .stat-person-card .stat-person { width: 100%; }
+    .stat-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .stat-edit-field { display: grid; gap: 2px; font-size: 9.5px; color: var(--muted); }
+    .stat-edit-input { width: 100%; box-sizing: border-box; height: 24px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 11px; }
+    .stat-edit-input:focus { border-color: var(--teal); outline: none; }
     .stat-list-head { padding: 2px 0 6px; color: var(--teal); font-size: 11px; font-weight: 800; }
     .bar-row.tree-row { cursor: pointer; }
     .bar-row.tree-row[disabled] { cursor: default; }
@@ -328,6 +338,7 @@
     .badge-ptech { background: #7650a3; }
     .badge-business { background: #b24f9c; }
     .badge-hq { background: #0b7285; }
+    .role-badge.badge-concurrent { display: inline-grid; place-items: center; width: calc(19px * var(--readability)); height: calc(19px * var(--readability)); min-height: 0; padding: 0; border: 1px solid #c8923b; border-radius: 50%; background: #fbf0dc; color: #8a5a10; font-weight: 800; }
     .person-role { font-size: calc(11px * var(--readability)); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .person-date { display: flex; align-items: center; gap: 4px; min-width: 0; color: #a3adaf; font-size: calc(8px * var(--readability)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .person-tenure { color: #7f9296; font-weight: 700; }
@@ -848,6 +859,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         division: found.person.division || "",
         joined: found.person.joined || "",
         note: found.person.note || "",
+        concurrent: Boolean(found.person.concurrent),
         photo: found.person.photo || "",
         departmentId: found.department?.id || "",
         parentId: found.department ? "" : (leaderParentId(found.person) || ""),
@@ -1039,7 +1051,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!redoStack.length) return;
         const next = redoStack.pop(); restoreUndoState(next, undoStack); toast("되돌린 작업을 다시 실행했습니다.");
       }
-      const totalHeadcount = () => data.executives.length + data.departments.reduce((sum, department) => sum + department.people.length, 0);
+      const isConcurrent = person => Boolean(person?.concurrent);
+      const headcountOf = list => (list || []).filter(person => !isConcurrent(person)).length;
+      const totalHeadcount = () => headcountOf(data.executives) + data.departments.reduce((sum, department) => sum + headcountOf(department.people), 0);
       const monthKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       function snapshotPayload(stripPhotos = true) {
         const snapshot = structuredClone({ meta: data.meta, executives: data.executives, departments: data.departments, lineRoutes: data.lineRoutes, centerOffsets: data.centerOffsets, groupOffsets: data.groupOffsets, departmentOffsets: data.departmentOffsets, subgroupOffsets: data.subgroupOffsets, collapsedDepartments: data.collapsedDepartments, customLines: data.customLines, subgroupBoxMoveVersion: data.subgroupBoxMoveVersion, rankOrder: data.rankOrder, rankGroups: data.rankGroups, hiddenRanks: data.hiddenRanks, subDepartmentLayoutVersion: data.subDepartmentLayoutVersion });
@@ -1146,6 +1160,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return Math.max(0, totalMonths);
       }
       function tenureText(value) { const months = tenureMonths(value); return months === null ? "" : `${Math.floor(months / 12)}년 ${months % 12}개월`; }
+      function tenureLabel(joined) {
+        const months = tenureMonths(joined);
+        if (months === null) return "근속 —";
+        const years = Math.floor(months / 12); const rest = months % 12;
+        if (years <= 0) return `근속 ${rest}개월`;
+        return rest ? `근속 ${years}년 ${rest}개월` : `근속 ${years}년`;
+      }
       function tenureBucket(person) {
         const months = tenureMonths(person.joined);
         if (months === null) return "입사일 미입력";
@@ -1182,7 +1203,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const searchClass = query ? (matchesSearch ? " search-match" : " search-muted") : "";
         const statClass = selectedStatType && selectedStatValue ? (selectedStatMatches(person) ? " stat-match" : " stat-muted") : "";
         const normalizedBadgeText = `${person.role || ""} ${person.title || ""} ${person.position || ""}`.trim().toLowerCase();
-        const badges = badgeDefinitions.filter(definition => definition.terms.some(term => normalizedBadgeText.includes(term))).map(definition => `<span class="role-badge ${definition.className}">${definition.label}</span>`).join("");
+        const badges = `${isConcurrent(person) ? `<span class="role-badge badge-concurrent" title="겸업 구성원 — 인원수에 포함되지 않습니다">겸</span>` : ""}${badgeDefinitions.filter(definition => definition.terms.some(term => normalizedBadgeText.includes(term))).map(definition => `<span class="role-badge ${definition.className}">${definition.label}</span>`).join("")}`;
         if (!row) {
           const execHeading = [person.name, person.title].map(value => String(value || "").trim()).filter(Boolean).join(" ") || "이름 미입력";
           const execSub = [person.role, person.position].map(value => String(value || "").trim()).filter(Boolean).join(" · ") || "직책·소속팀 미입력";
@@ -1792,7 +1813,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const titleLength = [...String(department.name || "")].length;
         const titleSize = titleLength > 18 ? 9.5 : titleLength > 15 ? 10.5 : titleLength > 12 ? 11.5 : titleLength > 10 ? 12 : 13;
         const collapseButton = realChildren.length ? `<button class="icon-button collapse-tool" type="button" data-toggle-department="${esc(department.id)}" data-tooltip="${collapsed ? "하위 파트 트리 펼치기" : "하위 파트 트리 접기"}" aria-expanded="${String(!collapsed)}" aria-label="${esc(department.name)} 하위 트리 ${collapsed ? "펼치기" : "접기"}">${collapsed ? "⌄" : "⌃"}</button>` : "";
-        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택" title="${esc(department.name)}"><strong style="--department-title-size:${titleSize}px">${esc(department.name)}</strong></button><div class="department-meta-row"><span class="department-count">${department.people.length}명${openingCount ? ` · TO ${openingCount}` : ""}</span><div class="department-tools">${collapseButton}<button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" data-tooltip="채용 예정 인원 추가" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" data-tooltip="하위 조직 추가" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" data-tooltip="구성원 추가" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
+        const card = `<section class="department ${level ? "is-child" : ""}" data-department-id="${esc(department.id)}" data-color="${esc(department.color || "teal")}" draggable="true"><div class="department-head"><button type="button" class="department-title" data-department-select="${esc(department.id)}" aria-label="${esc(department.name)} 파트 선택" title="${esc(department.name)}"><strong style="--department-title-size:${titleSize}px">${esc(department.name)}</strong></button><div class="department-meta-row"><span class="department-count">${headcountOf(department.people)}명${openingCount ? ` · TO ${openingCount}` : ""}</span><div class="department-tools">${collapseButton}<button class="icon-button to-tool" type="button" data-add-opening="${esc(department.id)}" data-tooltip="채용 예정 인원 추가" aria-label="${esc(department.name)} 채용 TO 추가">TO+</button><button class="icon-button" type="button" data-add-child="${esc(department.id)}" data-tooltip="하위 조직 추가" aria-label="${esc(department.name)} 하위 조직 추가">＋</button><button class="icon-button" type="button" data-add-member-to="${esc(department.id)}" data-tooltip="구성원 추가" aria-label="${esc(department.name)} 구성원 추가">♙</button></div></div></div><div class="department-body">${people}${openings}${!people && !openings ? `<div class="empty-drop"><span>구성원을 이곳으로<br>드래그하세요</span></div>` : ""}</div><div class="drop-hint">여기에 놓아 이동</div></section>`;
         const subgroupOffset = data.subgroupOffsets?.[department.id] || {};
         const subgroupX = Number(subgroupOffset.x) || 0; const subgroupY = Number(subgroupOffset.y) || 0;
         const childMarkup = children.length ? `<div class="sub-departments${collapsed ? " is-tree-collapsed" : ""}" data-subgroup-container="${esc(department.id)}" data-collapsed-tree="${String(collapsed)}" aria-hidden="${String(collapsed)}" style="--subgroup-x:${subgroupX}px;--subgroup-y:${subgroupY}px">${children.length > 1 ? `<button class="subgroup-line-handle" type="button" data-subgroup-line-move="${esc(department.id)}" aria-label="${esc(department.name)} 하위 파트 묶음선 및 파트 이동" title="드래그하여 묶음선과 하위 파트를 함께 이동">✥</button>` : ""}${children.map(child => renderDepartment(child, level + 1, visibleDepartmentIds)).join("")}</div>` : "";
@@ -1890,7 +1911,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         toast(`${department.name} 하위 트리를 ${willExpand ? "펼쳤습니다" : "접었습니다"}.`);
       }
       function renderCount() {
-        const total = data.executives.length + data.departments.reduce((sum, department) => sum + department.people.length, 0);
+        const total = totalHeadcount();
         $("#memberCount").textContent = `구성원 ${total}명`;
         $("#brandTitle").textContent = /조직도$/.test(data.meta.division || "") ? data.meta.division : `${data.meta.division} 조직도`;
         $("#brandCrumb").textContent = `조직도 / ${data.meta.division}`;
@@ -2024,8 +2045,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         ];
         const positionValue = entry => entry.person.title?.trim() || "미입력";
         const roleValue = entry => entry.person.role?.trim() || "미입력";
+        const countEntries = entries.filter(entry => !isConcurrent(entry.person));
         const positionCounts = new Map(); const roleCounts = new Map();
-        entries.forEach(entry => {
+        countEntries.forEach(entry => {
           const position = positionValue(entry); const role = roleValue(entry);
           positionCounts.set(position, (positionCounts.get(position) || 0) + 1);
           roleCounts.set(role, (roleCounts.get(role) || 0) + 1);
@@ -2043,25 +2065,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const max = Math.max(1, ...groups.map(([, count]) => count));
           $(selector).innerHTML = groups.map(([value, count]) => `<button class="bar-row${selectedStatType === group && selectedStatValue === value ? " active" : ""}" type="button" data-stat-type="${group}" data-stat-value="${esc(value)}"><span class="bar-label">${esc(value)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.max(4, count / max * 100)}%"></span></span><span class="bar-count">${count}명</span></button>`).join("") || `<span class="helper">${emptyMessage}</span>`;
         };
-        renderDivisionCharts(entries);
+        renderDivisionCharts(countEntries);
         renderRankChart("#positionChart", "position", positionOrder, positionCounts, "직위 데이터가 없습니다.");
         renderRankChart("#roleChart", "role", roleOrder, roleCounts, "직책 데이터가 없습니다.");
         const tenureOrder = ["1년 미만", "1~3년", "3~5년", "5~10년", "10년 이상", "입사일 미입력"];
-        const tenureGroups = tenureOrder.map(value => [value, entries.filter(entry => tenureBucket(entry.person) === value).length]); const tenureMax = Math.max(1, ...tenureGroups.map(([, count]) => count));
+        const tenureGroups = tenureOrder.map(value => [value, countEntries.filter(entry => tenureBucket(entry.person) === value).length]); const tenureMax = Math.max(1, ...tenureGroups.map(([, count]) => count));
         $("#tenureChart").innerHTML = tenureGroups.map(([value, count]) => `<button class="bar-row${selectedStatType === "tenure" && selectedStatValue === value ? " active" : ""}" type="button" data-stat-type="tenure" data-stat-value="${esc(value)}"><span class="bar-label">${esc(value)}</span><span class="bar-track"><span class="bar-fill" style="width:${count ? Math.max(4, count / tenureMax * 100) : 0}%"></span></span><span class="bar-count">${count}명</span></button>`).join("");
         const list = $("#statPersonList");
         const query = searchTerm.trim().toLowerCase();
-        const personMarkupFor = ({ person, department }) => `<button class="stat-person" type="button" data-stat-person="${esc(person.id)}"><strong>${esc(person.name)} · ${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</strong><span>${esc(person.position || "소속팀 미입력")} · ${esc(department)}${person.division ? ` · ${esc(person.division)}` : ""}</span></button>`;
+        const statFieldMarkup = (person, key, label) => {
+          const values = fieldOptionValues(key);
+          const current = String(person[key] || "");
+          const listId = `statOptions-${key}`;
+          return `<label class="stat-edit-field"><span>${esc(label)}</span><input class="stat-edit-input" type="text" value="${esc(current)}" placeholder="${esc(label)}" list="${listId}" data-stat-edit="${esc(person.id)}" data-stat-field="${esc(key)}"></label>`;
+        };
+        const optionDataLists = ["title", "role", "division", "position"].map(key => `<datalist id="statOptions-${key}">${fieldOptionValues(key).map(value => `<option value="${esc(value)}"></option>`).join("")}</datalist>`).join("");
+        const personMarkupFor = ({ person, department }) => `<div class="stat-person-card${isConcurrent(person) ? " is-concurrent" : ""}"><button class="stat-person" type="button" data-stat-person="${esc(person.id)}"><strong>${esc(person.name)}${isConcurrent(person) ? " · 겸업" : ""}</strong><span>${esc(department)}</span></button><div class="stat-edit-grid">${statFieldMarkup(person, "title", "직위")}${statFieldMarkup(person, "role", "직책")}${statFieldMarkup(person, "division", "사업본부")}${statFieldMarkup(person, "position", "소속팀")}</div></div>`;
         if (query) {
           const searched = entries.filter(entry => `${entry.person.name || ""} ${entry.person.title || ""} ${entry.person.role || ""} ${entry.person.position || ""} ${entry.person.division || ""} ${entry.department || ""}`.toLowerCase().includes(query));
           list.hidden = false;
-          list.innerHTML = `<div class="stat-list-head">검색 "${esc(searchTerm.trim())}" · ${searched.length}명</div>${searched.length ? searched.map(personMarkupFor).join("") : `<div class="helper">검색 결과가 없습니다.</div>`}`;
+          list.innerHTML = `${optionDataLists}<div class="stat-list-head">검색 "${esc(searchTerm.trim())}" · ${searched.length}명</div>${searched.length ? searched.map(personMarkupFor).join("") : `<div class="helper">검색 결과가 없습니다.</div>`}`;
           return;
         }
         if (!selectedStatType || !selectedStatValue) { list.hidden = true; list.innerHTML = ""; return; }
         const matched = entries.filter(entry => selectedStatMatches(entry.person));
         list.hidden = false;
-        list.innerHTML = matched.length ? matched.map(personMarkupFor).join("") : `<div class="helper">해당 조건의 구성원이 없습니다.</div>`;
+        list.innerHTML = matched.length ? `${optionDataLists}${matched.map(personMarkupFor).join("")}` : `<div class="helper">해당 조건의 구성원이 없습니다.</div>`;
       }
       function renderMonthlyPanel(selectedHistoryId = "") {
         const select = $("#historySelect"); const chart = $("#monthlyChart"); if (!select || !chart) return;
@@ -2187,7 +2216,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const departmentChanged = departmentEditChanged(selectedDepartment);
           const parentOptions = `<option value="">상위 파트 없음</option>${data.departments.filter(item => item.id !== selectedDepartment.id && !isDescendant(item.id, selectedDepartment.id)).map(item => `<option value="${esc(item.id)}" ${selectedDepartment.parentId === item.id ? "selected" : ""}>${esc(departmentLabel(item.id))}</option>`).join("")}`;
           const ownerOptions = data.executives.map(person => `<option value="${esc(person.id)}" ${selectedDepartment.ownerId === person.id ? "selected" : ""}>${esc(person.title || person.role || "상위자")} ${esc(person.name)}</option>`).join("");
-          node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">파트 편집</div><h2>조직 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile department-profile"><div class="department-swatch">⌘</div><div><strong>${esc(selectedDepartment.name)}</strong><span>${selectedDepartment.people.length}명 · TO ${selectedDepartment.openings || 0}개 · 하위 조직 ${childrenOf(selectedDepartment.id).length}개</span></div></div><div class="field"><label for="departmentNameField">파트명</label><input id="departmentNameField" type="text" value="${esc(selectedDepartment.name)}" placeholder="파트명 입력"></div><div class="field"><label for="departmentColorField">색상</label><select id="departmentColorField"><option value="teal" ${selectedDepartment.color === "teal" ? "selected" : ""}>청록</option><option value="purple" ${selectedDepartment.color === "purple" ? "selected" : ""}>보라</option><option value="blue" ${selectedDepartment.color === "blue" ? "selected" : ""}>파랑</option><option value="orange" ${selectedDepartment.color === "orange" ? "selected" : ""}>주황</option><option value="red" ${selectedDepartment.color === "red" ? "selected" : ""}>빨강</option></select></div><div class="field"><label for="departmentOwnerField">담당 상위자</label><select id="departmentOwnerField">${ownerOptions}</select><span class="helper">파트를 별도의 사업부장이나 다른 사람 아래로 이동합니다.</span></div><div class="field"><label for="departmentParentField">상위 파트</label><select id="departmentParentField">${parentOptions}</select><span class="helper">파트를 다른 파트 안의 하위 조직으로 이동할 수 있습니다.</span></div><div class="field"><label for="departmentOpeningsField">채용 예정 TO</label><input id="departmentOpeningsField" type="number" min="0" max="99" step="1" value="${selectedDepartment.openings || 0}"><span class="helper">입력한 수만큼 파트에 점선 TO가 표시됩니다.</span></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyDeptBtn"${departmentChanged ? "" : " disabled"}>변경 저장</button><button class="btn" type="button" id="addMemberFromInspector">+ 구성원 추가</button></div><div class="inspector-actions"><button class="btn btn-danger" type="button" id="deleteDepartmentBtn">파트 삭제</button></div>`;
+          node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">파트 편집</div><h2>조직 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile department-profile"><div class="department-swatch">⌘</div><div><strong>${esc(selectedDepartment.name)}</strong><span>${headcountOf(selectedDepartment.people)}명 · TO ${selectedDepartment.openings || 0}개 · 하위 조직 ${childrenOf(selectedDepartment.id).length}개</span></div></div><div class="field"><label for="departmentNameField">파트명</label><input id="departmentNameField" type="text" value="${esc(selectedDepartment.name)}" placeholder="파트명 입력"></div><div class="field"><label for="departmentColorField">색상</label><select id="departmentColorField"><option value="teal" ${selectedDepartment.color === "teal" ? "selected" : ""}>청록</option><option value="purple" ${selectedDepartment.color === "purple" ? "selected" : ""}>보라</option><option value="blue" ${selectedDepartment.color === "blue" ? "selected" : ""}>파랑</option><option value="orange" ${selectedDepartment.color === "orange" ? "selected" : ""}>주황</option><option value="red" ${selectedDepartment.color === "red" ? "selected" : ""}>빨강</option></select></div><div class="field"><label for="departmentOwnerField">담당 상위자</label><select id="departmentOwnerField">${ownerOptions}</select><span class="helper">파트를 별도의 사업부장이나 다른 사람 아래로 이동합니다.</span></div><div class="field"><label for="departmentParentField">상위 파트</label><select id="departmentParentField">${parentOptions}</select><span class="helper">파트를 다른 파트 안의 하위 조직으로 이동할 수 있습니다.</span></div><div class="field"><label for="departmentOpeningsField">채용 예정 TO</label><input id="departmentOpeningsField" type="number" min="0" max="99" step="1" value="${selectedDepartment.openings || 0}"><span class="helper">입력한 수만큼 파트에 점선 TO가 표시됩니다.</span></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyDeptBtn"${departmentChanged ? "" : " disabled"}>변경 저장</button><button class="btn" type="button" id="addMemberFromInspector">+ 구성원 추가</button></div><div class="inspector-actions"><button class="btn btn-danger" type="button" id="deleteDepartmentBtn">파트 삭제</button></div>`;
           bindDepartmentFields();
           return;
         }
@@ -2195,7 +2224,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!personEditBaseline || personEditBaseline.id !== person.id) personEditBaseline = personEditState(found);
         const editChanged = personEditChanged(found);
         const options = data.departments.map(department => `<option value="${esc(department.id)}" ${found.department && found.department.id === department.id ? "selected" : ""}>${esc(departmentLabel(department.id))}</option>`).join("");
-        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row">${comboFieldMarkup("titleField", "직위", "title", person.title)}${comboFieldMarkup("roleField", "직책", "role", person.role)}</div><div class="field-row">${comboFieldMarkup("divisionField", "사업본부", "division", person.division)}${comboFieldMarkup("positionField", "소속팀", "position", person.position)}</div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="joinedField">입사일</label><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."></div>${found.department ? "" : leaderPlacementMarkup(person)}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn"${editChanged ? "" : " disabled"}>변경 저장</button><button class="btn btn-danger" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
+        node.innerHTML = `<div class="inspector-top"><div><div class="inspector-kicker">${found.department ? esc(departmentLabel(found.department.id)) : "상위 계층"}</div><h2>구성원 정보</h2></div><button class="btn btn-quiet btn-small" type="button" id="closeInspector">닫기</button></div><div class="selected-profile">${avatarMarkup(person)}<div><strong>${esc(person.name || "이름 미입력")}</strong><span>${esc(person.title || "직위 미입력")}${person.role ? ` · ${esc(person.role)}` : ""}</span></div></div><div class="field"><label for="photoField">프로필 사진</label><div class="photo-actions"><button class="btn btn-small" type="button" id="photoBtn">사진 업로드</button><span class="helper">JPG, PNG</span></div></div><div class="field"><label for="nameField">이름</label><input id="nameField" type="text" value="${esc(person.name)}" placeholder="이름 입력"></div><div class="field-row">${comboFieldMarkup("titleField", "직위", "title", person.title)}${comboFieldMarkup("roleField", "직책", "role", person.role)}</div><div class="field-row">${comboFieldMarkup("divisionField", "사업본부", "division", person.division)}${comboFieldMarkup("positionField", "소속팀", "position", person.position)}</div>${found.department ? `<div class="field"><label for="departmentField">소속 파트</label><select id="departmentField">${options}</select></div>` : ""}<div class="field"><label for="joinedField">입사일</label><div class="joined-row"><input id="joinedField" type="text" value="${esc(person.joined)}" placeholder="예: 2024. 3. 1."><span class="tenure-badge" id="tenureBadge">${esc(tenureLabel(person.joined))}</span></div></div><div class="field"><label for="concurrentField">겸업 여부</label><select id="concurrentField"><option value="" ${isConcurrent(person) ? "" : "selected"}>일반 (인원수 포함)</option><option value="1" ${isConcurrent(person) ? "selected" : ""}>겸업 (인원수 제외)</option></select><span class="helper">겸업을 선택하면 카드에 원형 '겸' 배지가 붙고 인원수에서 빠집니다.</span></div>${found.department ? "" : leaderPlacementMarkup(person)}<div class="field"><label for="noteField">메모</label><textarea id="noteField" placeholder="필요한 메모를 입력하세요">${esc(person.note || "")}</textarea></div><div class="inspector-actions"><button class="btn btn-primary" type="button" id="applyBtn"${editChanged ? "" : " disabled"}>변경 저장</button><button class="btn btn-danger" type="button" id="deletePersonBtn">구성원 삭제</button></div>`;
         bindInspectorFields();
       }
       function bindDepartmentFields() {
@@ -2587,6 +2616,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const fields = { nameField: "name", titleField: "title", roleField: "role", positionField: "position", divisionField: "division", joinedField: "joined", noteField: "note" };
         const updateApplyState = () => { const button = $("#applyBtn"); const found = getPerson(selectedId); if (button) button.disabled = !personEditChanged(found); };
         Object.entries(fields).forEach(([id, key]) => { const input = $(`#${id}`); if (input) input.addEventListener("input", event => { const found = getPerson(selectedId); if (found) { found.person[key] = event.target.value; saveData(false); render(); updateApplyState(); } }); });
+        const joinedInput = $("#joinedField");
+        if (joinedInput) joinedInput.addEventListener("input", event => { const badge = $("#tenureBadge"); if (badge) badge.textContent = tenureLabel(event.target.value); });
+        const concurrentField = $("#concurrentField");
+        if (concurrentField) concurrentField.addEventListener("change", event => {
+          const found = getPerson(selectedId); if (!found) return;
+          if (event.target.value) found.person.concurrent = true; else delete found.person.concurrent;
+          saveData(false); render(); renderInspector();
+          toast(found.person.concurrent ? `${found.person.name}님을 겸업으로 표시했습니다. 인원수에서 제외됩니다.` : `${found.person.name}님의 겸업 표시를 해제했습니다.`);
+        });
         const departmentField = $("#departmentField");
         if (departmentField) departmentField.addEventListener("change", event => movePerson(selectedId, event.target.value));
         $("#closeInspector").addEventListener("click", closeInspectorPanel);
@@ -2765,6 +2803,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             bottom: (rect.bottom - treeRect.top) / scale,
             id: node.dataset.executiveId || node.dataset.departmentId || node.dataset.rowId
           });
+        });
+        $$(".sub-departments, .owner-departments, .free-owner-departments", canvas).forEach(container => {
+          if (container.closest(".is-tree-collapsed")) return;
+          const cards = $$(":scope > .department-branch > .department", container);
+          if (cards.length < 2) return;
+          let left = Infinity; let right = -Infinity; let top = Infinity; let bottom = -Infinity;
+          cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
+            left = Math.min(left, (rect.left - treeRect.left) / scale); right = Math.max(right, (rect.right - treeRect.left) / scale);
+            top = Math.min(top, (rect.top - treeRect.top) / scale); bottom = Math.max(bottom, (rect.bottom - treeRect.top) / scale);
+          });
+          if (!Number.isFinite(left)) return;
+          targets.push({ node: container, cx: (left + right) / 2, cy: (top + bottom) / 2, left, right, top, bottom, group: true });
         });
         leaderAlignTargets = targets;
         return targets;
@@ -3784,12 +3835,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (connectionSelection.some(item => item.type === "point")) deleteSelectedPoint();
         if (connectionSelection.some(item => item.type === "segment")) deleteSelectedSegment();
       });
+      function groupUnionRect(container, canvasRect, scale) {
+        const cards = $$(":scope > .department-branch > .department", container);
+        if (!cards.length) return null;
+        let left = Infinity; let right = -Infinity; let top = Infinity; let bottom = -Infinity;
+        cards.forEach(card => {
+          const rect = canvasRectFor(card, canvasRect, scale);
+          left = Math.min(left, rect.left); right = Math.max(right, rect.right);
+          top = Math.min(top, rect.top); bottom = Math.max(bottom, rect.bottom);
+        });
+        if (!Number.isFinite(left)) return null;
+        return { left, right, top, bottom, width: right - left, height: bottom - top, cx: (left + right) / 2, cy: (top + bottom) / 2, count: cards.length };
+      }
       function branchAlignTargets(excludeNode) {
         const canvas = $("#orgCanvas"); if (!canvas) return [];
         const canvasRect = canvas.getBoundingClientRect(); const scale = viewport.scale || 1;
-        return alignBoxNodes(canvas)
+        const targets = alignBoxNodes(canvas)
           .filter(node => !(excludeNode && (excludeNode === node || excludeNode.contains(node))))
           .map(node => { const rect = canvasRectFor(node, canvasRect, scale); return { node, cx: rect.cx, cy: rect.cy, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }; });
+        $$(".sub-departments, .owner-departments, .free-owner-departments", canvas).forEach(container => {
+          if (container.closest(".is-tree-collapsed")) return;
+          if (excludeNode && (excludeNode === container || excludeNode.contains(container) || container.contains(excludeNode))) return;
+          const union = groupUnionRect(container, canvasRect, scale);
+          if (!union || union.count < 2) return;
+          targets.push({ node: container, cx: union.cx, cy: union.cy, left: union.left, right: union.right, top: union.top, bottom: union.bottom, group: true });
+        });
+        return targets;
       }
       function alignSnap(raw, half, targets, threshold) {
         const halfW = Number(half?.w) || 0; const halfH = Number(half?.h) || 0;
@@ -4042,7 +4113,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const subContainer = $(`[data-subgroup-container="${CSS.escape(departmentId)}"]`);
           const subCanvas = $("#orgCanvas"); const subCanvasRect = subCanvas.getBoundingClientRect(); const subScale = viewport.scale || 1;
           const subRefNode = subContainer?.querySelector(".department") || subContainer;
-          const subRef = subRefNode ? canvasRectFor(subRefNode, subCanvasRect, subScale) : null;
+          const subRef = (subContainer ? groupUnionRect(subContainer, subCanvasRect, subScale) : null)
+            || (subRefNode ? canvasRectFor(subRefNode, subCanvasRect, subScale) : null);
           subgroupLineDrag = { id: event.pointerId, departmentId, startX: event.clientX, startY: event.clientY, origin: { x: Number(current.x) || 0, y: Number(current.y) || 0 }, handle: subgroupHandle,
             centerX: subRef ? subRef.cx : null, centerY: subRef ? subRef.cy : null, half: subRef ? { w: subRef.width / 2, h: subRef.height / 2 } : null, targets: branchAlignTargets(subContainer) };
           subgroupHandle.classList.add("is-moving");
@@ -4077,7 +4149,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const groupNode = handle.closest("[data-owner-group]");
         const groupCanvas = $("#orgCanvas"); const groupCanvasRect = groupCanvas.getBoundingClientRect(); const groupScale = viewport.scale || 1;
         const groupRefNode = groupNode?.querySelector(".department") || groupNode;
-        const groupRef = groupRefNode ? canvasRectFor(groupRefNode, groupCanvasRect, groupScale) : null;
+        const groupContainer = groupNode?.querySelector(":scope > .owner-departments, :scope > .free-owner-departments") || groupNode;
+        const groupRef = (groupContainer ? groupUnionRect(groupContainer, groupCanvasRect, groupScale) : null)
+          || (groupRefNode ? canvasRectFor(groupRefNode, groupCanvasRect, groupScale) : null);
         groupDrag = { id: event.pointerId, key, startX: event.clientX, startY: event.clientY, origin, handle,
           centerX: groupRef ? groupRef.cx : null, centerY: groupRef ? groupRef.cy : null, half: groupRef ? { w: groupRef.width / 2, h: groupRef.height / 2 } : null, targets: branchAlignTargets(groupNode) };
         handle.classList.add("is-moving");
@@ -4233,6 +4307,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (searchTerm.trim() && $("#peopleStats").hidden) focusSearchMatchInChart();
       });
       const peopleStats = $("#peopleStats");
+      peopleStats.addEventListener("change", event => {
+        const input = event.target.closest("[data-stat-edit]"); if (!input) return;
+        const found = getPerson(input.dataset.statEdit); if (!found) return;
+        const key = input.dataset.statField; const value = input.value.trim();
+        if (String(found.person[key] || "") === value) return;
+        found.person[key] = value;
+        if (key === "title" && value && !data.rankGroups.position.includes(value) && !data.rankGroups.role.includes(value)) data.rankGroups.position.push(value);
+        if (key === "role" && value && !data.rankGroups.role.includes(value) && !data.rankGroups.position.includes(value)) data.rankGroups.role.push(value);
+        syncRankOrder();
+        saveData(false); render();
+        toast(`${found.person.name}님의 정보를 수정했습니다.`);
+      });
       peopleStats.addEventListener("dragstart", event => {
         const chip = event.target.closest("[data-rank-value]"); if (!chip) return;
         event.stopPropagation(); draggedRankValue = chip.dataset.rankValue; draggedRankGroup = chip.dataset.rankGroup; chip.classList.add("dragging");
