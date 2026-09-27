@@ -616,7 +616,7 @@
         </div>
         <div class="top-actions">
           <button class="btn" id="toggleRankBtn" type="button" aria-expanded="false" aria-controls="peopleStats">직원현황</button>
-          <button class="btn" id="monthlyBtn" type="button" aria-expanded="false" aria-controls="monthlyPanel">월별인원</button>
+          <button class="btn" id="monthlyBtn" type="button" aria-expanded="false" aria-controls="monthlyPanel">저장이력</button>
           <button class="btn btn-primary" id="saveBtn" type="button" disabled title="수정 내용이 있을 때 활성화됩니다">저장</button>
           <div class="heading-meta"><span class="live-dot" aria-hidden="true"></span><span>실시간 편집</span><span id="memberCount">구성원 0명</span></div>
         </div>
@@ -2689,18 +2689,29 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         saveData(false); render(); renderInspector(); toast(connector ? `연결선 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.` : `${target.name}님의 ${side === "left" ? "왼쪽" : "오른쪽"}에 배치했습니다.`);
       }
       let leaderAlignTargets = null;
+      function alignBoxNodes(canvas) {
+        return [
+          ...$$('[data-executive-id]', canvas),
+          ...$$('.department[data-department-id]', canvas),
+          ...$$('.person-row[data-row-id]', canvas)
+        ];
+      }
       function buildLeaderAlignTargets(sourceId) {
-        const tree = $("#executiveTree"); if (!tree) { leaderAlignTargets = []; return leaderAlignTargets; }
+        const tree = $("#executiveTree"); const canvas = $("#orgCanvas");
+        if (!tree || !canvas) { leaderAlignTargets = []; return leaderAlignTargets; }
         const treeRect = tree.getBoundingClientRect(); const scale = viewport.scale || 1;
         const targets = [];
-        $$('[data-executive-id]', tree).forEach(node => {
-          if (node.dataset.executiveId === sourceId) return;
+        alignBoxNodes(canvas).forEach(node => {
+          if (node.dataset.executiveId && node.dataset.executiveId === sourceId) return;
+          if (node.closest(`[data-executive-id="${CSS.escape(String(sourceId))}"]`)) return;
           const rect = node.getBoundingClientRect();
-          targets.push({ x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: (rect.top + rect.height / 2 - treeRect.top) / scale, id: node.dataset.executiveId, axis: "both" });
-        });
-        $$('.department[data-department-id]', $("#orgCanvas")).forEach(node => {
-          const rect = node.getBoundingClientRect();
-          targets.push({ x: (rect.left + rect.width / 2 - treeRect.left) / scale, y: null, id: node.dataset.departmentId, axis: "x", type: "department-line" });
+          targets.push({
+            x: (rect.left + rect.width / 2 - treeRect.left) / scale,
+            y: (rect.top + rect.height / 2 - treeRect.top) / scale,
+            top: (rect.top - treeRect.top) / scale,
+            id: node.dataset.executiveId || node.dataset.departmentId || node.dataset.rowId,
+            axis: "both"
+          });
         });
         leaderAlignTargets = targets;
         return targets;
@@ -2716,9 +2727,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             const dx = Math.abs(raw.x - target.x);
             if (dx <= threshold && (!bestX || dx < bestX.distance)) bestX = { value: target.x, distance: dx, targetId: target.id, type: target.type };
           }
-          if (target.axis === "both" && Number.isFinite(target.y)) {
-            const dy = Math.abs(raw.y - target.y);
-            if (dy <= threshold && (!bestY || dy < bestY.distance)) bestY = { value: target.y, distance: dy, targetId: target.id };
+          if (target.axis === "both") {
+            [target.y, target.top].forEach(value => {
+              if (!Number.isFinite(value)) return;
+              const dy = Math.abs(raw.y - value);
+              if (dy <= threshold && (!bestY || dy < bestY.distance)) bestY = { value, distance: dy, targetId: target.id };
+            });
           }
         });
         return { x: bestX ? bestX.value : raw.x, y: bestY ? bestY.value : raw.y, snapX: bestX, snapY: bestY };
@@ -3639,12 +3653,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (connectionSelection.some(item => item.type === "point")) deleteSelectedPoint();
         if (connectionSelection.some(item => item.type === "segment")) deleteSelectedSegment();
       });
-      function branchAlignTargets(sourceId) {
+      function branchAlignTargets(excludeNode) {
         const canvas = $("#orgCanvas"); if (!canvas) return [];
         const canvasRect = canvas.getBoundingClientRect(); const scale = viewport.scale || 1;
-        return $$(".department", canvas)
-          .filter(card => card.dataset.departmentId !== sourceId && !card.closest(`[data-department-branch="${CSS.escape(sourceId)}"]`))
-          .map(card => { const rect = canvasRectFor(card, canvasRect, scale); return { x: rect.cx, y: rect.cy, top: rect.top }; });
+        return alignBoxNodes(canvas)
+          .filter(node => !(excludeNode && (excludeNode === node || excludeNode.contains(node))))
+          .map(node => { const rect = canvasRectFor(node, canvasRect, scale); return { x: rect.cx, y: rect.cy, top: rect.top }; });
       }
       function branchAlignmentForPoint(raw, targets) {
         const scale = viewport.scale || 1; const threshold = 9 / scale;
@@ -3852,7 +3866,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (subgroupHandle && event.button === 0) {
           event.preventDefault(); event.stopPropagation();
           const departmentId = subgroupHandle.dataset.subgroupLineMove; const current = data.subgroupOffsets?.[departmentId] || {};
-          subgroupLineDrag = { id: event.pointerId, departmentId, startX: event.clientX, startY: event.clientY, origin: { x: Number(current.x) || 0, y: Number(current.y) || 0 }, handle: subgroupHandle };
+          const subContainer = $(`[data-subgroup-container="${CSS.escape(departmentId)}"]`);
+          const subCanvas = $("#orgCanvas"); const subCanvasRect = subCanvas.getBoundingClientRect(); const subScale = viewport.scale || 1;
+          const subRefNode = subContainer?.querySelector(".department") || subContainer;
+          const subRef = subRefNode ? canvasRectFor(subRefNode, subCanvasRect, subScale) : null;
+          subgroupLineDrag = { id: event.pointerId, departmentId, startX: event.clientX, startY: event.clientY, origin: { x: Number(current.x) || 0, y: Number(current.y) || 0 }, handle: subgroupHandle,
+            centerX: subRef ? subRef.cx : null, centerY: subRef ? subRef.cy : null, targets: branchAlignTargets(subContainer) };
           subgroupHandle.classList.add("is-moving");
           try { subgroupHandle.setPointerCapture?.(event.pointerId); } catch (error) { /* 포인터 캡처 없이도 창 단위 이동으로 계속 처리합니다. */ }
           return;
@@ -3872,7 +3891,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             startX: event.clientX, startY: event.clientY,
             origin: { x: Number(current.x) || 0, y: Number(current.y) || 0 },
             centerX: rect.cx, centerY: rect.cy,
-            targets: branchAlignTargets(departmentId), moved: false
+            targets: branchAlignTargets(branch), moved: false
           };
           branchHandle.classList.add("is-moving"); branch.classList.add("is-branch-moving");
           try { branchHandle.setPointerCapture?.(event.pointerId); } catch (error) { /* 포인터 캡처가 없어도 창 단위로 계속 이동합니다. */ }
@@ -3882,7 +3901,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!handle || event.button !== 0) return;
         event.preventDefault(); event.stopPropagation();
         const key = handle.dataset.groupMove; const origin = groupOffset(key);
-        groupDrag = { id: event.pointerId, key, startX: event.clientX, startY: event.clientY, origin, handle };
+        const groupNode = handle.closest("[data-owner-group]");
+        const groupCanvas = $("#orgCanvas"); const groupCanvasRect = groupCanvas.getBoundingClientRect(); const groupScale = viewport.scale || 1;
+        const groupRefNode = groupNode?.querySelector(".department") || groupNode;
+        const groupRef = groupRefNode ? canvasRectFor(groupRefNode, groupCanvasRect, groupScale) : null;
+        groupDrag = { id: event.pointerId, key, startX: event.clientX, startY: event.clientY, origin, handle,
+          centerX: groupRef ? groupRef.cx : null, centerY: groupRef ? groupRef.cy : null, targets: branchAlignTargets(groupNode) };
         handle.classList.add("is-moving");
         try { handle.setPointerCapture?.(event.pointerId); } catch (error) { /* 합성 이벤트 등 포인터 캡처가 불가능한 경우에도 이동은 계속합니다. */ }
       });
@@ -3914,7 +3938,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
           event.preventDefault(); const scale = viewport.scale || 1;
           const dx = (event.clientX - subgroupLineDrag.startX) / scale; const dy = (event.clientY - subgroupLineDrag.startY) / scale;
-          const { departmentId, origin } = subgroupLineDrag; const next = { x: origin.x + dx, y: origin.y + dy };
+          const { departmentId, origin } = subgroupLineDrag;
+          let next = { x: origin.x + dx, y: origin.y + dy };
+          if (Number.isFinite(subgroupLineDrag.centerX)) {
+            const raw = { x: subgroupLineDrag.centerX + dx, y: subgroupLineDrag.centerY + dy };
+            const snap = branchAlignmentForPoint(raw, subgroupLineDrag.targets);
+            next = { x: next.x + (snap.x - raw.x), y: next.y + (snap.y - raw.y) };
+            updateBranchAlignGuides(snap);
+          }
           data.subgroupOffsets ||= {}; data.subgroupOffsets[departmentId] = next;
           const container = $(`[data-subgroup-container="${departmentId}"]`);
           if (container) { container.style.setProperty("--subgroup-x", `${next.x}px`); container.style.setProperty("--subgroup-y", `${next.y}px`); }
@@ -3937,7 +3968,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!groupDrag || groupDrag.id !== event.pointerId) return;
         event.preventDefault();
         const scale = viewport.scale || 1;
-        updateGroupPosition(groupDrag.key, { x: groupDrag.origin.x + (event.clientX - groupDrag.startX) / scale, y: groupDrag.origin.y + (event.clientY - groupDrag.startY) / scale });
+        const gdx = (event.clientX - groupDrag.startX) / scale; const gdy = (event.clientY - groupDrag.startY) / scale;
+        let nextGroup = { x: groupDrag.origin.x + gdx, y: groupDrag.origin.y + gdy };
+        if (Number.isFinite(groupDrag.centerX)) {
+          const raw = { x: groupDrag.centerX + gdx, y: groupDrag.centerY + gdy };
+          const snap = branchAlignmentForPoint(raw, groupDrag.targets);
+          nextGroup = { x: nextGroup.x + (snap.x - raw.x), y: nextGroup.y + (snap.y - raw.y) };
+          updateBranchAlignGuides(snap);
+        }
+        updateGroupPosition(groupDrag.key, nextGroup);
         requestConnectionRedraw();
       });
       const endGroupDrag = event => {
@@ -3961,7 +4000,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return;
         }
         if (subgroupLineDrag && subgroupLineDrag.id === event.pointerId) {
-          subgroupLineDrag.handle?.classList.remove("is-moving"); subgroupLineDrag = null; saveData(false); drawConnections(); toast("하위 파트 묶음선과 파트 위치를 함께 변경했습니다."); return;
+          subgroupLineDrag.handle?.classList.remove("is-moving"); subgroupLineDrag = null; clearBranchAlignGuides(); saveData(false); drawConnections(); toast("하위 파트 묶음선과 파트 위치를 함께 변경했습니다."); return;
         }
         if (branchDrag && branchDrag.id === event.pointerId) {
           const { departmentId, branch, handle, moved, next } = branchDrag;
@@ -3974,7 +4013,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           return;
         }
         if (!groupDrag || groupDrag.id !== event.pointerId) return;
-        groupDrag.handle?.classList.remove("is-moving"); groupDrag = null; saveData(false); drawConnections(); toast("파트 묶음 위치를 변경했습니다.");
+        groupDrag.handle?.classList.remove("is-moving"); groupDrag = null; clearBranchAlignGuides(); saveData(false); drawConnections(); toast("파트 묶음 위치를 변경했습니다.");
       };
       window.addEventListener("pointerup", endGroupDrag); window.addEventListener("pointercancel", endGroupDrag);
       const canvasWrap = $(".canvas-wrap");
