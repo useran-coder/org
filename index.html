@@ -3272,6 +3272,51 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           window.setTimeout(fitView, 80); toast(`엑셀 조직도를 적용했습니다. 구성원 ${count}명`);
         } catch (error) { console.error("Excel import failed", error); toast(error?.message || "엑셀 파일을 불러오지 못했습니다."); }
       }
+      function centerGroupsUnderParents(passes = 3) {
+        const canvas = $("#orgCanvas"); if (!canvas) return 0;
+        let moved = 0;
+        for (let pass = 0; pass < passes; pass += 1) {
+          const scale = viewport.scale || 1;
+          const canvasRect = canvas.getBoundingClientRect();
+          let changed = 0;
+          // 상위 구성원 아래 파트 묶음
+          $$("[data-owner-group]", canvas).forEach(group => {
+            const key = group.dataset.ownerGroup;
+            const container = group.querySelector(":scope > .owner-departments, :scope > .free-owner-departments") || group;
+            const union = groupUnionRect(container, canvasRect, scale);
+            if (!union) return;
+            const ownerCard = key && key !== "unassigned" ? canvas.querySelector(`.exec-card[data-executive-id="${CSS.escape(key)}"]`) : null;
+            if (!ownerCard) return;
+            const ownerRect = canvasRectFor(ownerCard, canvasRect, scale);
+            const delta = ownerRect.cx - union.cx;
+            if (Math.abs(delta) < 0.5) return;
+            const current = groupOffset(key);
+            updateGroupPosition(key, { x: current.x + delta, y: current.y });
+            changed += 1;
+          });
+          // 파트 아래 하위 파트 묶음 (깊은 단계까지)
+          $$("[data-subgroup-container]", canvas).forEach(container => {
+            if (container.closest(".is-tree-collapsed")) return;
+            const id = container.dataset.subgroupContainer;
+            const parentCard = canvas.querySelector(`.department[data-department-id="${CSS.escape(id)}"]`);
+            if (!parentCard) return;
+            const union = groupUnionRect(container, canvasRect, scale);
+            if (!union) return;
+            const parentRect = canvasRectFor(parentCard, canvasRect, scale);
+            const delta = parentRect.cx - union.cx;
+            if (Math.abs(delta) < 0.5) return;
+            const current = data.subgroupOffsets?.[id] || {};
+            const next = { x: (Number(current.x) || 0) + delta, y: Number(current.y) || 0 };
+            data.subgroupOffsets ||= {}; data.subgroupOffsets[id] = next;
+            container.style.setProperty("--subgroup-x", `${next.x}px`);
+            container.style.setProperty("--subgroup-y", `${next.y}px`);
+            changed += 1;
+          });
+          moved += changed;
+          if (!changed) break;
+        }
+        return moved;
+      }
       function optimizeOrgLayout() {
         const canvasCenterX = 1400;
         const sideX = { left: 520, right: 2280 };
@@ -3300,12 +3345,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         activeSnapPoint = null;
         connectionDrag = null;
         render();
-        saveData(false);
         requestAnimationFrame(() => requestAnimationFrame(() => {
+          centerGroupsUnderParents();
+          saveData(false);
           drawConnections();
           fitView();
         }));
-        toast("조직도를 최적화 정렬했습니다. Ctrl+Z로 이전 배치를 복원할 수 있습니다.");
+        toast("조직도를 최적화 정렬했습니다. 하위 묶음을 상위 박스 가운데로 맞췄습니다.");
       }
       function render() {
         renderExecutives(); renderDepartments(); renderCount(); renderStats();
@@ -3326,7 +3372,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         selectedConnectionKey = null;
         selectedConnectionPart = null;
         render();
-        requestAnimationFrame(() => requestAnimationFrame(fitView));
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          centerGroupsUnderParents();
+          saveData(false);
+          drawConnections();
+          fitView();
+        }));
         toast(`${VIEW_LABELS[mode]}로 전환했습니다.`);
       }
 
